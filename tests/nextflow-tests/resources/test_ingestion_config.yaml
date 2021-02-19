@@ -1,0 +1,15 @@
+accession_props:
+- accession-test1.vcf.gz.properties
+- accession-test2.vcf.gz.properties
+variant_load_props:
+- load_PRJEB12345_merged.vcf.gz.properties
+executable:
+  bcftools: 
+  bgzip: 
+  tabix: 
+  copy_to_ftp: 
+jar:
+  accession_pipeline: 
+  eva_pipeline: 
+project_accession: PRJEB12345
+instance_id: 1
