@@ -12,6 +12,8 @@ cd ${SCRIPT_DIR}
 nextflow run ${SOURCE_DIR}/accession.nf -params-file test_ingestion_config.yaml
 nextflow run ${SOURCE_DIR}/variant_load.nf -params-file test_ingestion_config.yaml
 
+# test that correct files exist, etc.
+
 # clean up
 rm -rf work .nextflow*
 cd ${cwd}

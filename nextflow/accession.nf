@@ -40,12 +40,11 @@ accession_props = Channel.fromPath(params.accession_props)
  */
 process accession_vcf {
     clusterOptions '-g /accession/instance-$params.instance_id'
-    
+
     input:
         path accession_properties from accession_props
 
     output:
-        // TODO can't be a wildcard here...
         path "*.vcf" into accessioned_vcfs
 
     """
@@ -108,6 +107,7 @@ process csi_index_vcf {
  * Move files from eva_public to FTP folder.
  */
  process move_to_ftp {
+    // TODO this needs to really wait for everything, not just one file from each
     input:
         path _ from csi_indexed_vcf
         path _ from tbi_indexed_vcf

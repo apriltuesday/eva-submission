@@ -16,5 +16,5 @@ executable:
   tabix: ../../../bin/fake_tabix.sh
   copy_to_ftp: ../../bin/fake_copy.sh
 jar:
-  accession_pipeline: ../../../java/FakeAccessionPipeline.jar
-  eva_pipeline: ../../../java/FakeVariantLoadPipeline.jar
+  accession_pipeline: ../../../java/accession.jar
+  eva_pipeline: ../../../java/variant-load.jar

@@ -8,9 +8,9 @@ cwd=${PWD}
 cd ${SCRIPT_DIR}/java
 
 javac FakeAccessionPipeline.java
-jar cfe FakeAccessionPipeline.jar FakeAccessionPipeline FakeAccessionPipeline.class
+jar cfe accession.jar FakeAccessionPipeline FakeAccessionPipeline.class
 
 javac FakeVariantLoadPipeline.java
-jar cfe FakeVariantLoadPipeline.jar FakeVariantLoadPipeline FakeVariantLoadPipeline.class
+jar cfe variant-load.jar FakeVariantLoadPipeline FakeVariantLoadPipeline.class
 
 cd ${cwd}
