@@ -2,7 +2,7 @@
 
 def helpMessage() {
     log.info"""
-    Accession and ingest variant files.
+    Accession variant files and copy to public FTP.
 
     Inputs:
             --accession_props       properties files for accessioning
@@ -42,7 +42,7 @@ process accession_vcf {
     clusterOptions '-g /accession/instance-$params.instance_id'
 
     input:
-        path "accession.properties" from accession_props
+        path accession_properties from accession_props
 
     output:
         path "00_logs/accessioning.*.log" into accessioning_log
@@ -50,8 +50,7 @@ process accession_vcf {
         path "60_eva_public/*.vcf" into accessioned_vcfs
 
     """
-    filename=$(basename accession.properties)
-    filename="${filename%.*}"
+    echo $accession_properties
     java -Xmx7g -jar $params.jar.accession_pipeline --spring.config.name=accession.properties \
         > 00_logs/accessioning.${filename}.log \
         2> 00_logs/accessioning.${filename}.err
@@ -67,7 +66,8 @@ process compress_vcfs {
         path vcf_file from accessioned_vcfs
 
     output:
-        path "60_eva_public/*.gz" into compressed_vcfs
+        path "60_eva_public/*.gz" into compressed_vcf1
+        path "60_eva_public/*.gz" into compressed_vcf2
 
     """
     $params.executable.bgzip -c $vcf_file > ${vcf_file}.gz
@@ -76,17 +76,30 @@ process compress_vcfs {
 
 
 /*
-* Index the compressed VCF file
-*/
-process index_vcf {
+ * Index the compressed VCF file
+ */
+process tabix_index_vcf {
     input:
-        path compressed_vcf from compressed_vcfs
+        path compressed_vcf from compressed_vcf1
 
     output:
         path "${compressed_vcf}.tbi" into indexed_vcfs
 
     """
     $params.executable.tabix -p vcf $compressed_vcf
+    """
+}
+
+
+process csi_index_vcf {
+    input:
+        path compressed_vcf from compressed_vcf2
+
+    output:
+        path "${compressed_vcf}.csi" into csi_indexed_vcf
+
+    """
+    $params.executable.bcftools index -c $compressed_vcf
     """
 }
 

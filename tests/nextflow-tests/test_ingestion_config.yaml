@@ -1,0 +1,18 @@
+project_accession: PRJEB12345
+instance_id: 1
+
+accession_props:
+- properties/accession_test1.vcf.gz.properties
+- properties/accession_test2.vcf.gz.properties
+variant_load_props:
+- properties/load_PRJEB12345_merged.vcf.gz.properties
+eva_pipeline_props: properties/test_eva_pipeline.properties
+
+executable:
+  bcftools: bin/fake_bcftools.sh
+  bgzip: bin/fake_bgzip.sh
+  tabix: bin/fake_tabix.sh
+  copy_to_ftp: bin/fake_copy.sh
+jar:
+  accession_pipeline: java/FakeAccessionPipeline.jar
+  eva_pipeline: java/FakeVariantLoadPipeline.jar

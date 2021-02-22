@@ -2,7 +2,7 @@
 
 def helpMessage() {
     log.info"""
-    Accession and ingest variant files.
+    Load variant files into variant warehouse.
 
     Inputs:
             --variant_load_props    properties files for variant load
