@@ -35,17 +35,13 @@ variant_load_props = Channel.fromPath(params.variant_load_props)
 */
 process load_vcf {
     input:
-        path "variant_load.properties" from variant_load_props
-
-    output:
-        path "00_logs/pipeline.*.log" into pipeline_log
-        path "00_logs/pipeline.*.err" into pipeline_err
+        path variant_load_properties from variant_load_props
 
     """
-    filename=$(basename variant_load.properties)
-    filename="${filename%.*}"
-    java -Xmx4G -jar $params.jar.eva_pipeline --spring.config.location=file:$params.eva_pipeline_props --parameters.path=variant_load.properties \
-        > 00_logs/pipeline.${filename}.log \
-        2> 00_logs/pipeline.${filename}.err
+    filename=\$(basename $variant_load_properties)
+    filename=\${filename%.*}
+    java -Xmx4G -jar $params.jar.eva_pipeline --spring.config.location=file:$params.eva_pipeline_props --parameters.path=$variant_load_properties \
+        > $params.logs_dir/pipeline.\${filename}.log \
+        2> $params.logs_dir/pipeline.\${filename}.err
     """
 }

@@ -2,7 +2,11 @@
 public class FakeVariantLoadPipeline {
     
     public static void main(String[] args) {
-	System.out.println("Hello world!");
+	String outString = "Running: java -jar variant-load.jar";
+	for (String arg: args) {
+	    outString += " " + arg;
+	}
+	System.out.println(outString);
     }
 
 }

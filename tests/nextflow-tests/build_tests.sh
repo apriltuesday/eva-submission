@@ -3,8 +3,7 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 SOURCE_DIR="$(dirname $(dirname $SCRIPT_DIR))/nextflow"
 
-# Fake Java jars
-# TODO: distribute the jars, flag/separate script to build
+# Builds fake Java jars
 cwd=${PWD}
 cd ${SCRIPT_DIR}/java
 

@@ -36,24 +36,24 @@ accession_props = Channel.fromPath(params.accession_props)
 
 
 /*
-* Accession VCF
-*/
+ * Accession VCF
+ */
 process accession_vcf {
     clusterOptions '-g /accession/instance-$params.instance_id'
-
+    
     input:
         path accession_properties from accession_props
 
     output:
-        path "00_logs/accessioning.*.log" into accessioning_log
-        path "00_logs/accessioning.*.err" into accessioning_err
-        path "60_eva_public/*.vcf" into accessioned_vcfs
+        // TODO can't be a wildcard here...
+        path "*.vcf" into accessioned_vcfs
 
     """
-    echo $accession_properties
-    java -Xmx7g -jar $params.jar.accession_pipeline --spring.config.name=accession.properties \
-        > 00_logs/accessioning.${filename}.log \
-        2> 00_logs/accessioning.${filename}.err
+    filename=\$(basename $accession_properties)
+    filename=\${filename%.*}
+    java -Xmx7g -jar $params.jar.accession_pipeline --spring.config.name=$accession_properties \
+        > $params.logs_dir/accessioning.\${filename}.log \
+        2> $params.logs_dir/accessioning.\${filename}.err
     """
 }
 
@@ -66,8 +66,8 @@ process compress_vcfs {
         path vcf_file from accessioned_vcfs
 
     output:
-        path "60_eva_public/*.gz" into compressed_vcf1
-        path "60_eva_public/*.gz" into compressed_vcf2
+        path "${vcf_file}.gz" into compressed_vcf1
+        path "${vcf_file}.gz" into compressed_vcf2
 
     """
     $params.executable.bgzip -c $vcf_file > ${vcf_file}.gz
@@ -83,7 +83,7 @@ process tabix_index_vcf {
         path compressed_vcf from compressed_vcf1
 
     output:
-        path "${compressed_vcf}.tbi" into indexed_vcfs
+        path "${compressed_vcf}.tbi" into tbi_indexed_vcf
 
     """
     $params.executable.tabix -p vcf $compressed_vcf
@@ -109,11 +109,11 @@ process csi_index_vcf {
  */
  process move_to_ftp {
     input:
-        path _ from indexed_vcfs
+        path _ from csi_indexed_vcf
+        path _ from tbi_indexed_vcf
 
     """
-    cd 60_eva_public
+    cd $params.public_dir
     $params.executable.copy_to_ftp $params.project_accession
-    cd ..
     """
  }

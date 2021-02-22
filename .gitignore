@@ -10,3 +10,6 @@ work
 
 *~
 *.class
+*.jar
+*.log
+*.err
