@@ -14,7 +14,7 @@ public class FakeAccessionPipeline {
 	}
 	System.out.println(outString);
 
-	String outFile = inFile.substring(0, inFile.indexOf(".")) + ".vcf";
+	String outFile = "../../../project/public/" + inFile.substring(0, inFile.indexOf(".")) + ".vcf";
 	try {
 	    FileWriter writer = new FileWriter(outFile);
 	    writer.write("accessioned vcf\n");

@@ -33,6 +33,7 @@ if (!params.accession_props || !params.project_accession || !params.instance_id)
 }
 
 accession_props = Channel.fromPath(params.accession_props)
+accessioned_vcfs = Channel.watchPath(params.public_dir + '/*.vcf')
 
 
 /*
@@ -43,9 +44,6 @@ process accession_vcf {
 
     input:
         path accession_properties from accession_props
-
-    output:
-        path "*.vcf" into accessioned_vcfs
 
     """
     filename=\$(basename $accession_properties)

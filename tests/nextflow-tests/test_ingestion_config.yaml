@@ -1,14 +1,14 @@
 project_accession: PRJEB12345
 instance_id: 1
 logs_dir: ../../../project/logs
-public_dir: ../../../project/public
+public_dir: project/public
 
 accession_props:
-- properties/accession_test1.vcf.gz.properties
-- properties/accession_test2.vcf.gz.properties
+- accession_test1.vcf.gz.properties
+- accession_test2.vcf.gz.properties
 variant_load_props:
-- properties/load_PRJEB12345_merged.vcf.gz.properties
-eva_pipeline_props: properties/test_eva_pipeline.properties
+- load_PRJEB12345_merged.vcf.gz.properties
+eva_pipeline_props: test_eva_pipeline.properties
 
 executable:
   bcftools: ../../../bin/fake_bcftools.sh
