@@ -7,14 +7,21 @@ SOURCE_DIR="$(dirname $(dirname $SCRIPT_DIR))/nextflow"
 
 cwd=${PWD}
 cd ${SCRIPT_DIR}
+mkdir project project/logs project/public
 
 # run accession and variant load
-nextflow run ${SOURCE_DIR}/accession.nf -params-file test_ingestion_config.yaml
+# note public_dir needs to be an absolute path, unlike others in config
+nextflow run ${SOURCE_DIR}/accession.nf -params-file test_ingestion_config.yaml \
+	 --public_dir ${SCRIPT_DIR}/project/public
 nextflow run ${SOURCE_DIR}/variant_load.nf -params-file test_ingestion_config.yaml
 
-# TODO test that correct files exist, etc.
+# check for public files and logs
+printf "====== Files made public ======\n"
+ls ${SCRIPT_DIR}/project/public
+printf "\n======== Java commands ========\n"
+cat ${SCRIPT_DIR}/project/logs/*.log
 
 # clean up
 rm -rf work .nextflow*
-rm project/public/*.vcf
+rm -r project
 cd ${cwd}

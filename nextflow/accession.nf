@@ -8,12 +8,16 @@ def helpMessage() {
             --accession_props       properties files for accessioning
             --project_accession     project accession
             --instance_id           instance id to run accessioning
+            --public_dir            directory for files to be made public
+            --logs_dir              logs directory
     """
 }
 
 params.accession_props = null
 params.project_accession = null
 params.instance_id = null
+params.public_dir = null
+params.logs_dir = null
 // executables
 params.executable = ["bgzip": "bgzip", "tabix": "tabix", "copy_to_ftp": "copy_to_ftp"]
 // java jars
@@ -33,7 +37,8 @@ if (!params.accession_props || !params.project_accession || !params.instance_id)
 }
 
 accession_props = Channel.fromPath(params.accession_props)
-accessioned_vcfs = Channel.watchPath(params.public_dir + '/*.vcf')
+num_props = Channel.fromPath(params.accession_props).count().value
+accessioned_vcfs = Channel.watchPath(params.public_dir + '/*.vcf').take(num_props)
 
 
 /*
@@ -59,6 +64,9 @@ process accession_vcf {
  * Compress accessioned VCFs
  */
 process compress_vcfs {
+    publishDir params.public_dir,
+	mode: 'copy'
+
     input:
         path vcf_file from accessioned_vcfs
 
@@ -76,6 +84,9 @@ process compress_vcfs {
  * Index the compressed VCF file
  */
 process tabix_index_vcf {
+    publishDir params.public_dir,
+	mode: 'copy'
+
     input:
         path compressed_vcf from compressed_vcf1
 
@@ -89,6 +100,9 @@ process tabix_index_vcf {
 
 
 process csi_index_vcf {
+    publishDir params.public_dir,
+	mode: 'copy'
+
     input:
         path compressed_vcf from compressed_vcf2
 
@@ -105,10 +119,9 @@ process csi_index_vcf {
  * Move files from eva_public to FTP folder.
  */
  process move_to_ftp {
-    // TODO this needs to really wait for everything, not just one file from each
     input:
-        path _ from csi_indexed_vcf
-        path _ from tbi_indexed_vcf
+        file csi_indices from csi_indexed_vcf.toList()
+        file tbi_indices from tbi_indexed_vcf.toList()
 
     """
     cd $params.public_dir

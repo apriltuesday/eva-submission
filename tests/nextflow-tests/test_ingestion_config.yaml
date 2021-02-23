@@ -1,7 +1,7 @@
 project_accession: PRJEB12345
 instance_id: 1
 logs_dir: ../../../project/logs
-public_dir: project/public
+public_dir: ../../../project/public
 
 accession_props:
 - accession_test1.vcf.gz.properties

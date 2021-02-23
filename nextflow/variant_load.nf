@@ -7,11 +7,13 @@ def helpMessage() {
     Inputs:
             --variant_load_props    properties files for variant load
             --eva_pipeline_props    main properties file for eva pipeline
+            --logs_dir              logs directory
     """
 }
 
 params.variant_load_props = null
 params.eva_pipeline_props = null
+params.logs_dir = null
 // java jars
 params.jar = ["eva_pipeline": "eva_pipeline"]
 // help
