@@ -38,11 +38,12 @@ if (!params.accession_props || !params.project_accession || !params.instance_id)
 
 accession_props = Channel.fromPath(params.accession_props)
 num_props = Channel.fromPath(params.accession_props).count().value
+// watches public dir for the same number of vcf files as there are property files
 accessioned_vcfs = Channel.watchPath(params.public_dir + '/*.vcf').take(num_props)
 
 
 /*
- * Accession VCF
+ * Accession VCFs
  */
 process accession_vcf {
     clusterOptions '-g /accession/instance-$params.instance_id'
@@ -63,7 +64,7 @@ process accession_vcf {
 /*
  * Compress accessioned VCFs
  */
-process compress_vcfs {
+process compress_vcf {
     publishDir params.public_dir,
 	mode: 'copy'
 
@@ -71,6 +72,7 @@ process compress_vcfs {
         path vcf_file from accessioned_vcfs
 
     output:
+        // used by both tabix and csi indexing processes
         path "${vcf_file}.gz" into compressed_vcf1
         path "${vcf_file}.gz" into compressed_vcf2
 
@@ -116,10 +118,11 @@ process csi_index_vcf {
 
 
 /*
- * Move files from eva_public to FTP folder.
+ * Copy files from eva_public to FTP folder.
  */
- process move_to_ftp {
+ process copy_to_ftp {
     input:
+        // ensures that all indices are done before we copy
         file csi_indices from csi_indexed_vcf.toList()
         file tbi_indices from tbi_indexed_vcf.toList()
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "Running: bcftools $*"
+echo "bcftools $*"
 
 filename=$3
 touch ${filename}.csi

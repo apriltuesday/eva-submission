@@ -1,3 +1,3 @@
 #!/bin/bash
 
-echo "Running: copy_to_ftp.sh $*"
+echo "copy_to_ftp.sh $*"

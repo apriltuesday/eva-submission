@@ -5,7 +5,7 @@ import java.io.IOException;
 public class FakeAccessionPipeline {
     
     public static void main(String[] args) {
-	String outString = "Running: java -jar accession.jar";
+	String outString = "java -jar accession.jar";
 	String inFile = null;
 	for (String arg: args) {
 	    outString += " " + arg;
@@ -14,6 +14,7 @@ public class FakeAccessionPipeline {
 	}
 	System.out.println(outString);
 
+	// real pipeline gets this from properties
 	String outFile = "../../../project/public/" + inFile.substring(0, inFile.indexOf(".")) + ".vcf";
 	try {
 	    FileWriter writer = new FileWriter(outFile);

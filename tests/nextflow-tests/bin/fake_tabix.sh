@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "Running: tabix $*"
+echo "tabix $*"
 
 filename=$3
 touch ${filename}.tbi
