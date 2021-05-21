@@ -14,10 +14,10 @@ from eva_submission.eload_utils import get_metadata_conn, get_reference_fasta_an
 
 class EloadBacklog(Eload):
 
-    def fill_in_config(self):
+    def fill_in_config(self, analysis=None, vcf_file=None, index_file=None):
         """Fills in config params from metadata DB and ENA, enabling later parts of pipeline to run."""
         self.eload_cfg.set('brokering', 'ena', 'PROJECT', value=self.project_accession)
-        self.get_analysis_info()
+        self.get_analysis_info(analysis, vcf_file, index_file)
         self.get_species_info()
         self.get_hold_date()
         self.eload_cfg.write()
@@ -62,8 +62,16 @@ class EloadBacklog(Eload):
         self.eload_cfg.set('submission', 'assembly_fasta', value=fasta_path)
         self.eload_cfg.set('submission', 'assembly_report', value=report_path)
 
-    def get_analysis_info(self):
+    def get_analysis_info(self, analysis, vcf_file, index_file):
         """Adds analysis info into the config: analysis accession(s), and vcf and index files."""
+        # If analysis info is directly passed in, we just set it in the config
+        if analysis and vcf_file and index_file:
+            self.eload_cfg.set('brokering', 'ena', 'ANALYSIS', value=analysis)
+            self.eload_cfg.set('brokering', 'vcf_files', vcf_file, 'index', value=index_file)
+            self.eload_cfg.set('submission', 'vcf_files', value=[vcf_file])
+            return
+
+        # Otherwise we get analysis info from the metadata database
         with get_metadata_conn() as conn:
             query = f"select a.analysis_accession, array_agg(c.filename) " \
                     f"from project_analysis a " \

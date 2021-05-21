@@ -33,10 +33,20 @@ logger = log_cfg.get_logger(__name__)
 def main():
     argparse = ArgumentParser(description='Prepare to process backlog study and validate VCFs.')
     argparse.add_argument('--eload', required=True, type=int, help='The ELOAD number for this submission')
+    argparse.add_argument('--analysis', required=False,
+                          help='The analysis accession to use, if different from the one already in metadata db.')
+    argparse.add_argument('--vcf_file', required=False,
+                          help='The VCF file to use, if different from the one already in metadata db.')
+    argparse.add_argument('--index_file', required=False,
+                          help='The index file to use, if different from the one already in metadata db.')
     argparse.add_argument('--debug', action='store_true', default=False,
                           help='Set the script to output logging information at debug level')
 
     args = argparse.parse_args()
+    # verify all necessary arguments present if analysis is being passed in
+    if any((args.analysis, args.vcf_file, args.index_file)):
+        assert all((args.analysis, args.vcf_file, args.index_file)), \
+            'Include analysis accession, vcf file path, and index file path if you want to use a specific analysis.'
 
     log_cfg.add_stdout_handler()
     if args.debug:
@@ -46,7 +56,7 @@ def main():
     load_config()
 
     preparation = EloadBacklog(args.eload)
-    preparation.fill_in_config()
+    preparation.fill_in_config(analysis=args.analysis, vcf_file=args.vcf_file, index_file=args.index_file)
     preparation.report()
 
     validation = EloadValidation(args.eload)
