@@ -13,6 +13,7 @@ from ebi_eva_common_pyutils.logger import logging_config as log_cfg
 from eva_submission import __version__
 from eva_submission.config_migration import upgrade_version_0_1
 from eva_submission.eload_utils import get_hold_date_from_ena
+from eva_submission.step_management import SubmissionStep
 from eva_submission.submission_config import EloadConfig
 from eva_submission.xlsx.xlsx_parser_eva import EvaXlsxReader, EvaXlsxWriter
 
@@ -45,6 +46,16 @@ class Eload(AppLogger):
         for k in directory_structure:
             os.makedirs(self._get_dir(k), exist_ok=True)
         self.create_log_file()
+
+    def get_step(self):
+        step = self.eload_cfg.get('step')
+        return SubmissionStep(step) if step else None
+
+    def set_step(self, step_name):
+        self.eload_cfg.set('step', value=str(step_name))
+
+    def clear_step(self):
+        self.eload_cfg.pop('step', default=None)
 
     @property
     def metadata_connection_handle(self):
