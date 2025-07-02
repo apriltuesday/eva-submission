@@ -67,9 +67,10 @@ json_to_xlsx_key_mapper = {
 
     "sample": {
         "analysisAlias": {'name': "Analysis Alias", 'transform': lambda x: ','.join(x)},
-        "sampleInVCF": "Sample ID",
+        "sampleInVCF": "Sample Name",
         "bioSampleAccession": "Sample Accession",
-        "bioSampleName": "Sample Name",
+        # TODO want to fill sample ID even if bioSampleName is missing - e.g. {'name': "Sample ID", 'default': {'link': 'sampleInVCF'}}
+        "bioSampleName": "Sample ID",
         "title": "Title",
         "description": "Description",
         "uniqueName": "Unique Name",
@@ -107,7 +108,7 @@ json_to_xlsx_key_mapper = {
         "subSpecies": "sub_species",
         "variety": "variety",
         "subStrain": "sub_strain",
-        "cellType": "cell_line",
+        "cellLine": "cell_line",
         "serotype": "serotype",
         "serovar": "serovar"
     },

@@ -17,7 +17,7 @@ class TestJsonToXlsxConverter(TestCase):
 
     def tearDown(self):
         files_from_tests = [
-            os.path.join(self.resources_folder, 'json_to_xlsx_converted.xlsx')
+            # os.path.join(self.resources_folder, 'json_to_xlsx_converted.xlsx')
         ]
         for f in files_from_tests:
             if os.path.exists(f):
@@ -96,22 +96,22 @@ class TestJsonToXlsxConverter(TestCase):
         assert len(samples_details) == 4
         assert samples_details[0]['Analysis Alias'] == 'VD1,VD2,VD3'
         assert samples_details[0]['Sample Accession'] == 'SAME00001'
-        assert samples_details[0]['Sample ID'] == 'sample1'
+        assert samples_details[0]['Sample Name'] == 'sample1'
 
         assert samples_details[1]['Analysis Alias'] == 'VD1,VD2,VD3'
         assert samples_details[1]['Sample Accession'] == 'SAME00002'
-        assert samples_details[1]['Sample ID'] == 'sample2'
+        assert samples_details[1]['Sample Name'] == 'sample2'
 
         assert samples_details[2]['Analysis Alias'] == 'VD3'
         assert samples_details[2]['Sample Accession'] == 'SAME00003'
-        assert samples_details[2]['Sample ID'] == 'sample3'
+        assert samples_details[2]['Sample Name'] == 'sample3'
 
         assert samples_details[3]['Analysis Alias'] == 'VD4,VD5'
-        assert samples_details[3]['Sample Name'] == 'Lm_17_S8'
+        assert samples_details[3]['Sample ID'] == 'Lm_17_S8'
         assert samples_details[3]['Title'] == 'Bastet normal sample'
         assert samples_details[3]['collection_date'].strftime('%Y-%m-%d') == '2021-03-12'
         assert samples_details[3]['Description'] == 'Test Description'
-        assert samples_details[3]['Sample ID'] == 'sample4'
+        assert samples_details[3]['Sample Name'] == 'sample4'
         assert samples_details[3]['Scientific Name'] == 'Lemur catta'
         assert samples_details[3]['sex'] == 'Female'
         assert samples_details[3]['Tax Id'] == 9447
