@@ -107,10 +107,11 @@ class EloadBacklog(Eload):
         for analysis_accession, asm_accession in rows:
             if not asm_accession:
                 raise ValueError(f'No reference accession for {analysis_accession} found in metadata DB.')
-            self.eload_cfg.set('submission', 'analyses', analysis_accession, 'assembly_accession', value=asm_accession)
+            alias = self._unique_alias(analysis_accession)
+            self.eload_cfg.set('submission', 'analyses', alias, 'assembly_accession', value=asm_accession)
             fasta_path, report_path = get_reference_fasta_and_report(sci_name, asm_accession)
-            self.eload_cfg.set('submission', 'analyses', analysis_accession, 'assembly_fasta', value=fasta_path)
-            self.eload_cfg.set('submission', 'analyses', analysis_accession, 'assembly_report', value=report_path)
+            self.eload_cfg.set('submission', 'analyses', alias, 'assembly_fasta', value=fasta_path)
+            self.eload_cfg.set('submission', 'analyses', alias, 'assembly_report', value=report_path)
 
     def find_local_file(self, fn):
         full_path = os.path.join(self._get_dir('vcf'), fn)
@@ -179,7 +180,7 @@ class EloadBacklog(Eload):
 
             # Using analysis_accession instead of analysis alias. This should not have any detrimental effect on
             # ingestion
-            self.eload_cfg.set('submission', 'analyses', analysis_accession, 'vcf_files', value=vcf_file_list)
+            self.eload_cfg.set('submission', 'analyses', self._unique_alias(analysis_accession), 'vcf_files', value=vcf_file_list)
 
     def _analysis_report(self, all_analysis):
         reports = []
