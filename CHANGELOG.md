@@ -1,10 +1,10 @@
 Changelog for eva-submission
 ============================
 
-## 1.22.2 (unreleased)
+## 1.22.2 (2026-07-02)
 ----------------------
 
-- Nothing changed yet.
+- Fixes nextflow clusterOptions syntax + improve nextflow test on SLURM
 
 
 ## 1.22.1 (2026-07-01)
