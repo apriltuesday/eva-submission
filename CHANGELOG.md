@@ -1,10 +1,10 @@
 Changelog for eva-submission
 ============================
 
-## 1.22.3 (unreleased)
+## 1.22.3 (2026-07-03)
 ----------------------
 
-- Nothing changed yet.
+- Hack to palliate with Nextflow stre4am swap bug
 
 
 ## 1.22.2 (2026-07-02)
