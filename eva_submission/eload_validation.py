@@ -30,6 +30,7 @@ class EloadValidation(Eload):
         self.nextflow_config = nextflow_config
 
     def validate(self, validation_tasks=None, shallow_validation=False):
+        self.update_submission_status(sub_cli_utils.VALIDATION, sub_cli_utils.RUNNING)
         if not validation_tasks:
             validation_tasks = self.all_validation_tasks
 

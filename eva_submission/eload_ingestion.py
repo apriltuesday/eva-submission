@@ -72,6 +72,7 @@ class EloadIngestion(Eload):
             vep_cache_assembly_name=None,
             resume=False
     ):
+        self.update_submission_status(sub_cli_utils.INGESTION, sub_cli_utils.RUNNING)
         clustering_performed_on_assembly = None
         self.eload_cfg.set(self.config_section, 'ingestion_date', value=self.now)
         self.project_dir = self.setup_project_dir()

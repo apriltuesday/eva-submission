@@ -34,6 +34,7 @@ class EloadBrokering(Eload):
     def broker(self, brokering_tasks_to_force=None, existing_project=None, async_upload=False, dry_ena_upload=False,
                output_format='json', resume=False):
         """Run the brokering process"""
+        self.update_submission_status(sub_cli_utils.BROKERING, sub_cli_utils.RUNNING)
         self.eload_cfg.set('brokering', 'brokering_date', value=self.now)
         self.prepare_brokering(force=('preparation' in brokering_tasks_to_force), resume=resume)
         self.upload_to_bioSamples(force=('biosamples' in brokering_tasks_to_force))
