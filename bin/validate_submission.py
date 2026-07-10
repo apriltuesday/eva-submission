@@ -19,6 +19,7 @@ from argparse import ArgumentParser
 
 from ebi_eva_common_pyutils.logger import logging_config as log_cfg
 
+from eva_sub_cli_processing import sub_cli_utils
 from eva_submission.eload_validation import EloadValidation
 from eva_submission.submission_config import load_config
 
@@ -61,10 +62,14 @@ def main():
     with EloadValidation(args.eload, nextflow_config=args.nextflow_config) as eload:
         eload.upgrade_to_new_version_if_needed()
         if not args.report:
-            if args.set_as_valid:
-                eload.set_validation_task_result_valid(args.validation_tasks)
-            else:
-                eload.validate(args.validation_tasks, args.shallow_validation)
+            try:
+                if args.set_as_valid:
+                    eload.set_validation_task_result_valid(args.validation_tasks)
+                else:
+                    eload.validate(args.validation_tasks, args.shallow_validation)
+            except Exception as e:
+                eload.update_submission_status(sub_cli_utils.VALIDATION, sub_cli_utils.FAILURE)
+                raise e
         eload.report()
 
 

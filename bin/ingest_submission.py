@@ -19,6 +19,8 @@ from argparse import ArgumentParser
 from copy import copy
 
 from ebi_eva_common_pyutils.logger import logging_config as log_cfg
+
+from eva_sub_cli_processing import sub_cli_utils
 from eva_submission.eload_ingestion import EloadIngestion
 from eva_submission.submission_config import load_config
 
@@ -56,11 +58,15 @@ def main():
 
     with EloadIngestion(args.eload, nextflow_config=args.nextflow_config) as ingestion:
         ingestion.upgrade_to_new_version_if_needed()
-        ingestion.run_ingestion_and_qc_result(
-            tasks=args.tasks,
-            vep_cache_assembly_name=args.vep_cache_assembly_name,
-            resume=args.resume
-        )
+        try:
+            ingestion.run_ingestion_and_qc_result(
+                tasks=args.tasks,
+                vep_cache_assembly_name=args.vep_cache_assembly_name,
+                resume=args.resume
+            )
+        except Exception as e:
+            ingestion.update_submission_status(sub_cli_utils.INGESTION, sub_cli_utils.FAILURE)
+            raise e
 
 
 if __name__ == "__main__":

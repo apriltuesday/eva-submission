@@ -19,6 +19,7 @@ from argparse import ArgumentParser
 
 from ebi_eva_common_pyutils.logger import logging_config as log_cfg
 
+from eva_sub_cli_processing import sub_cli_utils
 from eva_submission.eload_brokering import EloadBrokering
 from eva_submission.eload_utils import check_existing_project_in_ena
 from eva_submission.submission_config import load_config
@@ -71,9 +72,13 @@ def main():
     with EloadBrokering(args.eload, nextflow_config=args.nextflow_config) as brokering:
         brokering.upgrade_to_new_version_if_needed()
         if not args.report:
-            brokering.broker(brokering_tasks_to_force=args.force, existing_project=args.project_accession,
-                             async_upload=not args.use_legacy_upload, dry_ena_upload=args.dry_ena_upload,
-                             output_format=args.output_format, resume=args.resume)
+            try:
+                brokering.broker(brokering_tasks_to_force=args.force, existing_project=args.project_accession,
+                                 async_upload=not args.use_legacy_upload, dry_ena_upload=args.dry_ena_upload,
+                                 output_format=args.output_format, resume=args.resume)
+            except Exception as e:
+                brokering.update_submission_status(sub_cli_utils.BROKERING, sub_cli_utils.FAILURE)
+                raise e
         brokering.report()
 
 
