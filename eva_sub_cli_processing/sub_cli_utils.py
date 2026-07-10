@@ -1,5 +1,3 @@
-import json
-
 import requests
 from ebi_eva_common_pyutils.config import cfg
 from retry import retry
@@ -62,5 +60,20 @@ def put_to_sub_ws(url, json_data=None):
     response.raise_for_status()
     if not response.text:
         return None
-
     return response.json()
+
+
+def fetch_submission_from_eload(eload_id):
+    response = get_from_sub_ws(sub_ws_url_build('admin', 'submissions', eloadId=eload_id, size=1))
+    content = response.get('content', [])
+    if not content:
+        return None
+    return content[0]
+
+
+def fetch_submission(submission_id):
+    response = get_from_sub_ws(sub_ws_url_build('admin', 'submissions', submissionId=submission_id, size=1))
+    content = response.get('content', [])
+    if not content:
+        return None
+    return content[0]

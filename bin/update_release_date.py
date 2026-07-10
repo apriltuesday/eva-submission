@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 # Copyright 2026 EMBL - European Bioinformatics Institute
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,7 +20,7 @@ from argparse import ArgumentParser
 from ebi_eva_common_pyutils.logger import logging_config as log_cfg
 
 from eva_sub_cli_processing.sub_cli_utils import (
-    put_to_sub_ws, sub_ws_url_build, PROCESSING_STEPS, PROCESSING_STATUS, fetch_submission_from_eload, fetch_submission
+    put_to_sub_ws, sub_ws_url_build, fetch_submission_from_eload, fetch_submission
 )
 from eva_submission.submission_config import load_config
 
@@ -29,16 +28,14 @@ logger = log_cfg.get_logger(__name__)
 
 
 def main():
-    argparse = ArgumentParser(description='Update the processing status of a submission in the submission webservice')
+    argparse = ArgumentParser(description='Update the release date of a submission in the submission webservice')
     target = argparse.add_mutually_exclusive_group(required=True)
     target.add_argument('--submission_id', required=False, type=str,
                         help='Target submission by UUID')
     target.add_argument('--eload_id', required=False, type=int,
                         help='Target submission by ELOAD number (resolved to UUID via API)')
-    argparse.add_argument('--step', required=True, choices=PROCESSING_STEPS,
-                          help='Processing step to update')
-    argparse.add_argument('--status', required=True, choices=PROCESSING_STATUS,
-                          help='New processing status')
+    argparse.add_argument('--release_date', required=True, type='str',
+                          help='Release date in ISO-8601 format (e.g. 2027-01-31)')
     argparse.add_argument('--debug', action='store_true', default=False,
                           help='Set the script to output logging information at debug level')
     args = argparse.parse_args()
@@ -63,11 +60,10 @@ def main():
             logger.error(f'Submission {submission_id} not found')
             sys.exit(1)
 
-    old_step = submission.get('processingStep') or 'None'
-    old_status = submission.get('processingStatus') or 'None'
+    old_release_date = submission.get('releaseDate') or 'None'
 
-    put_to_sub_ws(sub_ws_url_build('admin', 'submission-process', submission_id, args.step, args.status))
-    logger.info(f'Updated submission {submission_id}: {old_step}/{old_status} -> {args.step}/{args.status}')
+    put_to_sub_ws(sub_ws_url_build('admin', 'submission', submission_id, 'releaseDate', args.release_date))
+    logger.info(f'Updated submission {submission_id}: {old_release_date} -> {args.release_date}')
 
 
 if __name__ == '__main__':
