@@ -105,8 +105,10 @@ class EloadBrokering(Eload):
                 self.eload_cfg.set('brokering', 'ena', 'hold_date', value=ena_uploader.converter.hold_date)
                 self.eload_cfg.set('brokering', 'ena', 'pass', value=not bool(ena_uploader.results['errors']))
 
-                # Set release date in submission-ws
-                self.set_release_date(ena_uploader.converter.hold_date)
+                # Set release date, project accession, and analysis accessions in submission-ws
+                self.set_release_date_in_ws(ena_uploader.converter.hold_date)
+                self.set_project_and_analysis_in_ws(ena_uploader.results['PROJECT'],
+                                                    list(ena_uploader.results.get('ANALYSIS', {}).values()))
         else:
             self.info('Brokering to ENA has already been run, Skip!')
 
@@ -412,7 +414,7 @@ Archival Confirmation Text:
         else:
             self.update_submission_status(sub_cli_utils.BROKERING, sub_cli_utils.FAILURE)
 
-    def set_release_date(self, release_date):
+    def set_release_date_in_ws(self, release_date):
         try:
             if self.submission_id:
                 put_to_sub_ws(sub_ws_url_build('admin', 'submission', self.submission_id, 'releaseDate',
@@ -422,3 +424,17 @@ Archival Confirmation Text:
                     f'Could not update release date to {release_date} as no submission id provided for Eload {self.eload}')
         except Exception as e:
             self.warning(f'Could not update release date to {release_date}. Error {e}')
+
+    def set_project_and_analysis_in_ws(self, project_accession, analysis_accessions):
+        try:
+            if self.submission_id:
+                body = {
+                    'projectAccession': project_accession,
+                    'analysisAccessions': analysis_accessions
+                }
+                put_to_sub_ws(sub_ws_url_build('admin', 'submission', self.submission_id, 'accessions'), body)
+            else:
+                self.warning(
+                    f'Could not update project and analysis accessions as no submission id provided for Eload {self.eload}')
+        except Exception as e:
+            self.warning(f'Could not update project and analysis accessions. Error {e}')
