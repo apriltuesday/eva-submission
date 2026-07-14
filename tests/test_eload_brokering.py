@@ -21,6 +21,48 @@ class TestEloadBrokering(TestCase):
     top_dir = os.path.dirname(os.path.dirname(__file__))
     resources_folder = os.path.join(os.path.dirname(__file__), 'resources')
 
+    ena_receipt_xml = '''<?xml version="1.0" encoding="UTF-8"?>
+        <?xml-stylesheet type="text/xsl" href="receipt.xsl"?>
+        <RECEIPT receiptDate="2020-12-21T16:23:42.950Z" submissionFile="ELOAD_733.Submission.xml" success="true">
+             <ANALYSIS accession="ERZ1695006" alias="FGV analysis b" status="PRIVATE"/>
+             <PROJECT accession="PRJEB42220" alias="ICFADS2b" status="PRIVATE" holdUntilDate="2022-12-21Z">
+                  <EXT_ID accession="ERP126058" type="study"/>
+             </PROJECT>
+             <SUBMISSION accession="ERA3202812" alias="ICFADS2b"/>
+             <MESSAGES>
+                  <INFO>Submission has been committed.</INFO>
+             </MESSAGES>
+             <ACTIONS>ADD</ACTIONS>
+             <ACTIONS>ADD</ACTIONS>
+        </RECEIPT>'''
+    ena_receipt_json = '''{
+      "success" : true,
+      "receiptDate" : "2020-12-21T16:23:42.950Z",
+      "projects" : [ {
+        "alias" : "ICFADS2b",
+        "accession" : "PRJEB42220",
+        "status" : "PRIVATE",
+        "holdUntilDate" : "2022-12-21Z",
+        "externalAccession" : {
+          "id" : "ERP126058",
+          "db" : "study"
+        }
+      } ],
+      "submission" : {
+        "alias" : "SICFADS2b",
+        "accession" : "ERA3202812"
+      },
+      "analyses": [ {
+          "accession" : "ERZ1695006",
+          "alias": "FGV analysis b",
+          "status" : "PRIVATE"
+      }],
+      "messages" : {
+        "info" : [ "Submission has been committed." ]
+      },
+      "actions" : [ "ADD", "ADD" ]
+    }'''
+
     def setUp(self) -> None:
         config_file = os.path.join(self.resources_folder, 'submission_config.yml')
         load_config(config_file)
@@ -86,7 +128,7 @@ class TestEloadBrokering(TestCase):
         self.eload.eload_cfg.set('validation', 'valid', 'metadata_spreadsheet',
                                  value=os.path.join(self.resources_folder, 'metadata.xlsx'))
         self.eload.eload_cfg.set('brokering', 'analyses', value={'AA1':{'vcf_files':{}}})
-        response = Mock(text='', headers={'Content-Type': 'application/xml'})
+        response = Mock(text=self.ena_receipt_xml, headers={'Content-Type': 'application/xml'})
         with patch.object(ENAUploader, 'upload_vcf_files_to_ena_ftp'),\
               patch.object(ENAUploader, '_post_metadata_file_to_ena', return_value=response):
             self.eload.broker_to_ena()
@@ -95,9 +137,12 @@ class TestEloadBrokering(TestCase):
         self.eload.eload_cfg.set('validation', 'valid', 'metadata_json',
                                  value=os.path.join(self.resources_folder, 'brokering', 'eva_metadata_json.json'))
         self.eload.eload_cfg.set('brokering', 'analyses', value={'AA1':{'vcf_files':{}}})
-        response = Mock(text='', headers={'Content-Type': 'application/json'})
+        upload_response = Mock(text='{"submissionId": 123, "_links": {"poll": {"href": "http://mock-poll.com/123"}}}',
+                               headers={'Content-Type': 'application/json'}, status_code=200)
+        poll_response = Mock(text=self.ena_receipt_json, headers={'Content-Type': 'application/json'})
         with patch.object(ENAUploader, 'upload_vcf_files_to_ena_ftp'),\
-              patch.object(ENAUploader, '_post_metadata_file_to_ena', return_value=response):
+              patch.object(ENAUploader, '_post_metadata_file_to_ena', return_value=upload_response),\
+              patch('eva_submission.ENA_submission.upload_to_ENA.requests.get', return_value=poll_response):
             self.eload.broker_to_ena(async_upload=True)
 
     def test_broker_to_ena_json_existing_project(self):

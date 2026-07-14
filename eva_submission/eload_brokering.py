@@ -418,7 +418,7 @@ Archival Confirmation Text:
         try:
             if self.submission_id:
                 put_to_sub_ws(sub_ws_url_build('admin', 'submission', self.submission_id, 'releaseDate',
-                                               release_date.strftime('%Y-%m-%d')))
+                                               release_date))
             else:
                 self.warning(
                     f'Could not update release date to {release_date} as no submission id provided for Eload {self.eload}')
