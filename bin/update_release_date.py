@@ -70,7 +70,7 @@ def main():
                         help='Target submission by UUID')
     target.add_argument('--eload_id', required=False, type=int,
                         help='Target submission by ELOAD number (resolved to UUID via API)')
-    argparse.add_argument('--release_date', required=True, type='str',
+    argparse.add_argument('--release_date', required=True, type=str,
                           help='Release date in ISO-8601 format (e.g. 2027-01-31)')
     argparse.add_argument('--debug', action='store_true', default=False,
                           help='Set the script to output logging information at debug level')
