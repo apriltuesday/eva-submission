@@ -96,11 +96,15 @@ def main():
             logger.error(f'Submission {submission_id} not found')
             sys.exit(1)
 
-    project_accession = submission.get('projectAccession') or 'None'
+    project_accession = submission.get('projectAccession')
     old_release_date = submission.get('releaseDate') or 'None'
 
+    if not project_accession:
+        logger.error(f'Could not determine project accession for submission {submission_id}')
+        sys.exit(1)
     update_ena_release_date(project_accession, args.release_date)
-    put_to_sub_ws(sub_ws_url_build('admin', 'submission', submission_id, 'releaseDate', args.release_date))
+    put_to_sub_ws(sub_ws_url_build('admin', 'submission', submission_id, 'trackingDetails'),
+                  {'releaseDate': args.release_date})
     logger.info(f'Updated submission {submission_id}: {old_release_date} -> {args.release_date}')
 
 
