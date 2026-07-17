@@ -32,6 +32,7 @@ logger = log_cfg.get_logger(__name__)
 
 
 @retry(requests.exceptions.ConnectionError, tries=3, delay=2, backoff=1.2, jitter=(1, 3))
+# FIXME: currently fails with 415 response from ENA
 def update_ena_release_date(project_accession, release_date):
     body = {
         "submission": {
