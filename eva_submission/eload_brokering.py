@@ -10,6 +10,7 @@ from ebi_eva_common_pyutils import command_utils
 from ebi_eva_common_pyutils.config import cfg
 
 from eva_sub_cli_processing import sub_cli_utils
+from eva_sub_cli_processing.sub_cli_utils import put_to_sub_ws, sub_ws_url_build
 from eva_submission import NEXTFLOW_DIR
 from eva_submission.ENA_submission.upload_to_ENA import ENAUploader, ENAUploaderAsync
 from eva_submission.biosample_submission.biosamples_submitters import SampleMetadataSubmitter, SampleReferenceSubmitter, \
@@ -103,6 +104,11 @@ class EloadBrokering(Eload):
                 self.eload_cfg.set('brokering', 'ena', 'date', value=self.now)
                 self.eload_cfg.set('brokering', 'ena', 'hold_date', value=ena_uploader.converter.hold_date)
                 self.eload_cfg.set('brokering', 'ena', 'pass', value=not bool(ena_uploader.results['errors']))
+
+                # Set release date, project accession, and analysis accessions in submission-ws
+                self.update_tracking_details(ena_uploader.converter.hold_date,
+                                             ena_uploader.results['PROJECT'],
+                                             list(ena_uploader.results.get('ANALYSIS', {}).values()))
         else:
             self.info('Brokering to ENA has already been run, Skip!')
 
@@ -407,3 +413,18 @@ Archival Confirmation Text:
             self.update_submission_status(sub_cli_utils.BROKERING, sub_cli_utils.SUCCESS)
         else:
             self.update_submission_status(sub_cli_utils.BROKERING, sub_cli_utils.FAILURE)
+
+    def update_tracking_details(self, release_date, project_accession, analysis_accessions):
+        try:
+            if self.submission_id:
+                body = {
+                    'releaseDate': release_date,
+                    'projectAccession': project_accession,
+                    'analysisAccessions': analysis_accessions
+                }
+                put_to_sub_ws(sub_ws_url_build('admin', 'submission', self.submission_id, 'trackingDetails'), body)
+            else:
+                self.warning(
+                    f'Could not update tracking details as no submission id provided for Eload {self.eload}')
+        except Exception as e:
+            self.warning(f'Could not update submission tracking details. Error {e}')

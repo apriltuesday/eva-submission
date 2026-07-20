@@ -21,29 +21,11 @@ from argparse import ArgumentParser
 from ebi_eva_common_pyutils.logger import logging_config as log_cfg
 
 from eva_sub_cli_processing.sub_cli_utils import (
-    get_from_sub_ws, put_to_sub_ws, sub_ws_url_build, PROCESSING_STEPS, PROCESSING_STATUS
+    put_to_sub_ws, sub_ws_url_build, PROCESSING_STEPS, PROCESSING_STATUS, fetch_submission_from_eload, fetch_submission
 )
 from eva_submission.submission_config import load_config
 
 logger = log_cfg.get_logger(__name__)
-
-
-def fetch_submission_from_eload(eload_id):
-    response = get_from_sub_ws(sub_ws_url_build('admin', 'submissions', eloadId=eload_id, size=1))
-    content = response.get('content', [])
-    if not content:
-        logger.error(f'No submission found for ELOAD {eload_id}')
-        sys.exit(1)
-    return content[0]
-
-
-def fetch_submission(submission_id):
-    response = get_from_sub_ws(sub_ws_url_build('admin', 'submissions', submissionId=submission_id, size=1))
-    content = response.get('content', [])
-    if not content:
-        logger.error(f'Submission {submission_id} not found')
-        sys.exit(1)
-    return content[0]
 
 
 def main():
@@ -69,11 +51,17 @@ def main():
 
     if args.eload_id:
         submission = fetch_submission_from_eload(args.eload_id)
+        if not submission:
+            logger.error(f'No submission found for ELOAD {args.eload_id}')
+            sys.exit(1)
         submission_id = submission['submissionId']
         logger.info(f'Resolved ELOAD {args.eload_id} to submission {submission_id}')
     else:
         submission_id = args.submission_id
         submission = fetch_submission(submission_id)
+        if not submission:
+            logger.error(f'Submission {submission_id} not found')
+            sys.exit(1)
 
     old_step = submission.get('processingStep') or 'None'
     old_status = submission.get('processingStatus') or 'None'
