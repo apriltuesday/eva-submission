@@ -23,9 +23,7 @@ from ebi_eva_common_pyutils.logger import logging_config as log_cfg
 from requests.auth import HTTPBasicAuth
 from retry import retry
 
-from eva_sub_cli_processing.sub_cli_utils import (
-    put_to_sub_ws, sub_ws_url_build, fetch_submission_from_eload, fetch_submission
-)
+from eva_sub_cli_processing.sub_cli_utils import fetch_submission_from_eload, fetch_submission, update_tracking_details
 from eva_submission.submission_config import load_config
 
 logger = log_cfg.get_logger(__name__)
@@ -64,15 +62,19 @@ def update_ena_release_date(project_accession, release_date):
         logger.error(f'Failed to update release date for {project_accession} on ENA. Error: {e}')
         sys.exit(1)
 
+
 def main():
-    argparse = ArgumentParser(description='Update the release date of a submission in the submission webservice')
+    argparse = ArgumentParser(description='Update tracking details (release date, RT link) of a submission in the '
+                                          'submission webservice. Also updates release date in ENA.')
     target = argparse.add_mutually_exclusive_group(required=True)
     target.add_argument('--submission_id', required=False, type=str,
                         help='Target submission by UUID')
     target.add_argument('--eload_id', required=False, type=int,
                         help='Target submission by ELOAD number (resolved to UUID via API)')
-    argparse.add_argument('--release_date', required=True, type=str,
+    argparse.add_argument('--release_date', required=False, type=str, default=None,
                           help='Release date in ISO-8601 format (e.g. 2027-01-31)')
+    argparse.add_argument('--rt_link', required=False, type=str, default=None, help='URL for RT ticket')
+
     argparse.add_argument('--debug', action='store_true', default=False,
                           help='Set the script to output logging information at debug level')
     args = argparse.parse_args()
@@ -97,16 +99,21 @@ def main():
             logger.error(f'Submission {submission_id} not found')
             sys.exit(1)
 
-    project_accession = submission.get('projectAccession')
-    old_release_date = submission.get('releaseDate') or 'None'
+    if args.release_date:
+        project_accession = submission.get('projectAccession')
+        if not project_accession:
+            logger.error(f'Could not determine project accession for submission {submission_id}')
+            sys.exit(1)
+        update_ena_release_date(project_accession, args.release_date)
 
-    if not project_accession:
-        logger.error(f'Could not determine project accession for submission {submission_id}')
-        sys.exit(1)
-    update_ena_release_date(project_accession, args.release_date)
-    put_to_sub_ws(sub_ws_url_build('admin', 'submission', submission_id, 'trackingDetails'),
-                  {'releaseDate': args.release_date})
-    logger.info(f'Updated submission {submission_id}: {old_release_date} -> {args.release_date}')
+    update_tracking_details(submission_id, release_date=args.release_date, rt_link=args.rt_link)
+
+    if args.release_date:
+        old_release_date = submission.get('releaseDate') or 'None'
+        logger.info(f'Updated submission {submission_id}: {old_release_date} -> {args.release_date}')
+    if args.rt_link:
+        old_rt_link = submission.get('rtLink') or 'None'
+        logger.info(f'Updated submission {submission_id}: {old_rt_link} -> {args.rt_link}')
 
 
 if __name__ == '__main__':

@@ -1,6 +1,9 @@
 import requests
 from ebi_eva_common_pyutils.config import cfg
+from ebi_eva_common_pyutils.logger import logging_config as log_cfg
 from retry import retry
+
+logger = log_cfg.get_logger(__name__)
 
 # Submission statuses
 OPEN = 'OPEN'
@@ -77,3 +80,24 @@ def fetch_submission(submission_id):
     if not content:
         return None
     return content[0]
+
+
+def update_tracking_details(submission_id, release_date=None, project_accession=None, analysis_accessions=None,
+                            rt_link=None):
+    body = {}
+    if release_date:
+        body['releaseDate'] = release_date
+    if project_accession:
+        body['projectAccession'] = project_accession
+    if analysis_accessions:
+        body['analysisAccessions'] = analysis_accessions
+    if rt_link:
+        body['rtLink'] = rt_link
+
+    if body:
+        try:
+            put_to_sub_ws(sub_ws_url_build('admin', 'submission', submission_id, 'trackingDetails'), body)
+        except Exception as e:
+            logger.warning(f'Could not update submission tracking details for {submission_id}. Error {e}')
+    else:
+        logger.info('No submission tracking details to update for {submission_id}')
