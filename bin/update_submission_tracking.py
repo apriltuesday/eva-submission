@@ -16,6 +16,7 @@
 import logging
 import sys
 from argparse import ArgumentParser
+from xml.etree import ElementTree as ET
 
 import requests
 from ebi_eva_common_pyutils.config import cfg
@@ -30,36 +31,42 @@ logger = log_cfg.get_logger(__name__)
 
 
 @retry(requests.exceptions.ConnectionError, tries=3, delay=2, backoff=1.2, jitter=(1, 3))
-# FIXME: currently fails with 415 response from ENA
 def update_ena_release_date(project_accession, release_date):
-    body = {
-        "submission": {
-            "accession": project_accession,
-            "actions": [
-                {
-                    "type": "HOLD",
-                    "target": project_accession,
-                    "holdUntilDate": release_date
-                }
-            ]
-        }
+    xml_body = f'''<?xml version="1.0" encoding="utf-8"?>
+    <WEBIN xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+        <SUBMISSION_SET>
+            <SUBMISSION>
+                <ACTIONS>
+                    <ACTION>
+                        <HOLD target="{project_accession}" HoldUntilDate="{release_date}"/>
+                    </ACTION>
+                </ACTIONS>
+            </SUBMISSION>
+        </SUBMISSION_SET>
+    </WEBIN>
+    '''
+    mime_type = 'application/xml'
+    file_dict = {
+        'SUBMISSION': ('update.xml', xml_body, mime_type)
     }
     ena_auth = HTTPBasicAuth(cfg.query('ena', 'username'), cfg.query('ena', 'password'))
     ena_url = cfg.query('ena', 'submit_url')
-    response = requests.post(ena_url, auth=ena_auth, data=body, headers={'Accept': 'application/json'})
+    response = requests.post(ena_url, auth=ena_auth, files=file_dict, headers={'Accept': mime_type})
     response.raise_for_status()
 
     # Check for error messages in ENA receipt
+    errors = []
     try:
-        receipt = response.json()
-        messages = receipt.get('messages')
-        if 'error' in messages:
-            logger.error(f'Failed to update release date for {project_accession} on ENA. Error: {messages["error"]}')
-            sys.exit(1)
-        else:
-            logger.info(f'Updated release date for {project_accession} on ENA')
-    except Exception as e:
-        logger.error(f'Failed to update release date for {project_accession} on ENA. Error: {e}')
+        receipt = ET.fromstring(response.text)
+        message = receipt.findall('MESSAGES')[0]
+        for child in message:
+            if child.tag == 'ERROR':
+                errors.append(child.text)
+    except ET.ParseError:
+        logger.error(f'Failed to update release date for {project_accession} on ENA, could not parse receipt: {response.text}')
+        sys.exit(1)
+    if errors:
+        logger.error(f'Failed to update release date for {project_accession} on ENA. Errors: {errors}')
         sys.exit(1)
 
 
