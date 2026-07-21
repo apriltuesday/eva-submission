@@ -46,12 +46,10 @@ def update_ena_release_date(project_accession, release_date):
     </WEBIN>
     '''
     mime_type = 'application/xml'
-    file_dict = {
-        'SUBMISSION': ('update.xml', xml_body, mime_type)
-    }
     ena_auth = HTTPBasicAuth(cfg.query('ena', 'username'), cfg.query('ena', 'password'))
     ena_url = cfg.query('ena', 'submit_url')
-    response = requests.post(ena_url, auth=ena_auth, files=file_dict, headers={'Accept': mime_type})
+    response = requests.post(ena_url, auth=ena_auth, data=xml_body,
+                             headers={'Accept': mime_type, 'Content-Type': mime_type})
     response.raise_for_status()
 
     # Check for error messages in ENA receipt
