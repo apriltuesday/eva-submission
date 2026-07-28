@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import logging
+import sys
 from argparse import ArgumentParser
 from copy import copy
 
@@ -31,7 +32,10 @@ def main():
     default_tasks = copy(EloadIngestion.all_tasks)
     default_tasks.remove('archive_only')
     argparse = ArgumentParser(description='Accession and ingest submission data into EVA')
-    argparse.add_argument('--eload', required=True, type=int, help='The ELOAD number for this submission.')
+    target = argparse.add_mutually_exclusive_group(required=True)
+    target.add_argument('--submission_id', required=False, type=str,
+                        help='Submission ID, converted to ELOAD for downstream processing')
+    target.add_argument('--eload', required=False, type=int, help='The ELOAD number for this submission')
     argparse.add_argument('--tasks', required=False, type=str, nargs='+',
                           default=default_tasks, choices=EloadIngestion.all_tasks,
                           help='Task or set of tasks to perform during ingestion.')
@@ -56,7 +60,16 @@ def main():
     # Load the config_file from default location
     load_config()
 
-    with EloadIngestion(args.eload, nextflow_config=args.nextflow_config) as ingestion:
+    if args.submission_id:
+        submission = sub_cli_utils.fetch_submission(args.submission_id)
+        if not submission:
+            logger.error(f'Submission {args.submission_id} not found')
+            sys.exit(1)
+        eload_id = submission.get('eloadId')
+    else:
+        eload_id = args.eload
+
+    with EloadIngestion(eload_id, nextflow_config=args.nextflow_config) as ingestion:
         ingestion.upgrade_to_new_version_if_needed()
         try:
             ingestion.run_ingestion_and_qc_result(
