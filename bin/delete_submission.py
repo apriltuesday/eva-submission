@@ -15,10 +15,12 @@
 # limitations under the License.
 
 import logging
+import sys
 from argparse import ArgumentParser
 
 from ebi_eva_common_pyutils.logger import logging_config as log_cfg
 
+from eva_sub_cli_processing.sub_cli_utils import fetch_submission
 from eva_submission.eload_deletion import EloadDeletion
 from eva_submission.submission_config import load_config
 
@@ -27,7 +29,10 @@ logger = log_cfg.get_logger(__name__)
 
 def main():
     argparse = ArgumentParser(description='Delete/Archive submission')
-    argparse.add_argument('--eload', required=True, type=int, help='The ELOAD number of the submission.')
+    target = argparse.add_mutually_exclusive_group(required=True)
+    target.add_argument('--submission_id', required=False, type=str,
+                        help='Submission ID, converted to ELOAD for downstream processing')
+    target.add_argument('--eload', required=False, type=int, help='The ELOAD number for this submission')
     argparse.add_argument('--ftp_box', required=False, type=int, choices=range(1, 21), default=None,
                           help='box number where the data has been uploaded')
     argparse.add_argument('--submitter', required=False, type=str, help='the name of the directory for the submitter')
@@ -45,8 +50,17 @@ def main():
     # Load the config_file from default location
     load_config()
 
+    if args.submission_id:
+        submission = fetch_submission(args.submission_id)
+        if not submission:
+            logger.error(f'Submission {args.submission_id} not found')
+            sys.exit(1)
+        eload_id = submission.get('eloadId')
+    else:
+        eload_id = args.eload
+
     # Do NOT use context manager to ensure the Eload object does not rewrite the config after deletion!
-    submission_deletion = EloadDeletion(args.eload)
+    submission_deletion = EloadDeletion(eload_id)
     submission_deletion.delete_submission(args.ftp_box, args.submitter, args.force_delete)
 
 

@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import logging
+import sys
 from argparse import ArgumentParser
 
 from ebi_eva_common_pyutils.logger import logging_config as log_cfg
@@ -37,7 +38,10 @@ def ENA_Project(project):
 
 def main():
     argparse = ArgumentParser(description='Broker validated ELOAD to BioSamples and ENA')
-    argparse.add_argument('--eload', required=True, type=int, help='The ELOAD number for this submission')
+    target = argparse.add_mutually_exclusive_group(required=True)
+    target.add_argument('--submission_id', required=False, type=str,
+                        help='Submission ID, converted to ELOAD for downstream processing')
+    target.add_argument('--eload', required=False, type=int, help='The ELOAD number for this submission')
     argparse.add_argument('--debug', action='store_true', default=False,
                           help='Set the script to output logging information at debug level')
     argparse.add_argument('--project_accession', required=False, type=ENA_Project,
@@ -69,7 +73,17 @@ def main():
 
     # Load the config_file from default location
     load_config()
-    with EloadBrokering(args.eload, nextflow_config=args.nextflow_config) as brokering:
+
+    if args.submission_id:
+        submission = sub_cli_utils.fetch_submission(args.submission_id)
+        if not submission:
+            logger.error(f'Submission {args.submission_id} not found')
+            sys.exit(1)
+        eload_id = submission.get('eloadId')
+    else:
+        eload_id = args.eload
+
+    with EloadBrokering(eload_id, nextflow_config=args.nextflow_config) as brokering:
         brokering.upgrade_to_new_version_if_needed()
         if not args.report:
             try:
