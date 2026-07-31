@@ -1,16 +1,22 @@
 Changelog for eva-submission
 ============================
 
-## 1.22.4 (unreleased)
+## 1.23.0 (2026-07-31)
 ----------------------
 
-- Nothing changed yet.
+- Updates to list submissions
+- Updates to how scripts interact with tracking table, including adding release date and updating status on failure
+- New scripts to manually update RT link and release date
+- Nextflow updates: work directory now on nobackup, max 10 processes in ingestion
+- Allow main scripts to accept submission ID as well as eload
+- Allow deriving biosample without modifications
+- Bug fixes
 
 
 ## 1.22.3 (2026-07-03)
 ----------------------
 
-- Hack to palliate with Nextflow stre4am swap bug
+- Hack to palliate with Nextflow stream swap bug
 
 
 ## 1.22.2 (2026-07-02)
