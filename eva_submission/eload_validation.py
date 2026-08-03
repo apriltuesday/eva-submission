@@ -43,7 +43,7 @@ class EloadValidation(Eload):
         # All validation tasks are run via nextflow
         eva_sub_cli_validation_dir = os.path.join(self._get_dir('eva_sub_cli'), 'validation_submission_dir')
         output_dir = self._run_validation_workflow(eva_sub_cli_validation_dir, validation_tasks, shallow_validation)
-        self._collect_validation_workflow_results(output_dir, eva_sub_cli_validation_dir, validation_tasks)
+        self._collect_validation_workflow_results(self._tmp_output_dir(), eva_sub_cli_validation_dir, validation_tasks)
         shutil.rmtree(output_dir)
         shutil.rmtree(self._tmp_output_dir())
 

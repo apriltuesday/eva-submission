@@ -51,7 +51,7 @@ class EloadBrokering(Eload):
             for analysis in valid_analyses
         ]) or force:
             output_dir = self._run_brokering_prep_workflow(resume=resume)
-            self._collect_brokering_prep_results(output_dir)
+            self._collect_brokering_prep_results(self._tmp_output_dir())
             shutil.rmtree(output_dir)
             shutil.rmtree(self._tmp_output_dir())
             self.eload_cfg.set(self.config_section, 'prepare_brokering', 'nextflow_dir', 'preparation',
