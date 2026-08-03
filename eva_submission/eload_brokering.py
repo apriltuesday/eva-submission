@@ -53,6 +53,7 @@ class EloadBrokering(Eload):
             output_dir = self._run_brokering_prep_workflow(resume=resume)
             self._collect_brokering_prep_results(output_dir)
             shutil.rmtree(output_dir)
+            shutil.rmtree(self._tmp_output_dir())
             self.eload_cfg.set(self.config_section, 'prepare_brokering', 'nextflow_dir', 'preparation',
                                value=self.nextflow_complete_value)
         else:
@@ -209,7 +210,8 @@ class EloadBrokering(Eload):
         cfg['executable']['python']['script_path'] = os.path.dirname(os.path.dirname(__file__))
         brokering_config = {
             'vcf_files_mapping': self._generate_csv_mappings(),
-            'output_dir': work_dir,
+            # Separate output_dir from work_dir so we don't need to copy within hps
+            'output_dir': self._tmp_output_dir(),
             'executable': cfg['executable']
         }
         brokering_config_file = os.path.join(self.eload_dir, 'brokering_config_file.yaml')
@@ -231,6 +233,9 @@ class EloadBrokering(Eload):
             self.error('Nextflow pipeline failed: aborting brokering')
             raise e
         return work_dir
+
+    def _tmp_output_dir(self):
+        return os.path.join(self.eload_dir, '18_brokering', 'tmp')
 
     def parse_bcftools_norm_report(self, norm_report):
         total = split = realigned = skipped = 0

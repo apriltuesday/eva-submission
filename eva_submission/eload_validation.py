@@ -45,6 +45,7 @@ class EloadValidation(Eload):
         output_dir = self._run_validation_workflow(eva_sub_cli_validation_dir, validation_tasks, shallow_validation)
         self._collect_validation_workflow_results(output_dir, eva_sub_cli_validation_dir, validation_tasks)
         shutil.rmtree(output_dir)
+        shutil.rmtree(self._tmp_output_dir())
 
         self.mark_valid_files_and_metadata()
         self.update_submission_validation_status()
@@ -135,12 +136,13 @@ class EloadValidation(Eload):
         assert self.eload_cfg.query('submission', 'metadata_json'), 'Metadata json is not set in the config file, Cannot proceed with validation'
         metadata_json = self.eload_cfg.query('submission', 'metadata_json')
         assert os.path.isfile(metadata_json), f'Metadata json {metadata_json} does not exist. Cannot proceed with validation'
-        output_dir = self.create_nextflow_temp_output_directory()
+        work_dir = self.create_nextflow_temp_output_directory()
         vcf_files_mapping_csv = self._generate_csv_mappings()
         cfg['executable']['python']['script_path'] = os.path.dirname(os.path.dirname(__file__))
         validation_config = {
             'vcf_files_mapping': vcf_files_mapping_csv,
-            'output_dir': output_dir,
+            # Separate output_dir from work_dir so we don't need to copy within hps
+            'output_dir': self._tmp_output_dir(),
             'eva_sub_cli_validation_dir': eva_sub_cli_validation_dir,
             'metadata_json': metadata_json,
             'executable': cfg['executable'],
@@ -160,13 +162,16 @@ class EloadValidation(Eload):
                     'export NXF_OPTS="-Xms1g -Xmx8g"; ',
                     cfg['executable']['nextflow'], validation_script,
                     '-params-file', validation_config_file,
-                    '-work-dir', output_dir,
+                    '-work-dir', work_dir,
                     get_nextflow_config_flag(self.nextflow_config)
                 ))
             )
         except subprocess.CalledProcessError:
             self.error('Nextflow pipeline failed: results might not be complete')
-        return output_dir
+        return work_dir
+
+    def _tmp_output_dir(self):
+        return os.path.join(self.eload_dir, '13_validation', 'tmp')
 
     def _move_file(self, source, dest):
         if source:
