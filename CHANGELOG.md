@@ -1,10 +1,10 @@
 Changelog for eva-submission
 ============================
 
-## 1.23.2 (unreleased)
+## 1.23.2 (2026-08-03)
 ----------------------
 
-- Nothing changed yet.
+- Fix for collecting brokering and validation results
 
 
 ## 1.23.1 (2026-08-03)
