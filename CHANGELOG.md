@@ -1,10 +1,10 @@
 Changelog for eva-submission
 ============================
 
-## 1.23.1 (unreleased)
+## 1.23.1 (2026-08-03)
 ----------------------
 
-- Nothing changed yet.
+- Fix for Nextflow publishDir on HPS filesystem
 
 
 ## 1.23.0 (2026-07-31)
