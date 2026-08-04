@@ -13,7 +13,6 @@ from ebi_eva_common_pyutils.assembly.assembly import get_supported_asm_from_ense
     get_supported_asm_from_ensembl_rapid_release
 from ebi_eva_common_pyutils.config import cfg
 from ebi_eva_common_pyutils.ena_utils import get_assembly_name_and_taxonomy_id
-from ebi_eva_common_pyutils.ncbi_utils import get_species_name_from_ncbi
 from ebi_eva_internal_pyutils.config_utils import get_mongo_uri_for_eva_profile
 from ebi_eva_internal_pyutils.metadata_utils import resolve_variant_warehouse_db_name, insert_new_assembly_and_taxonomy, \
     get_assembly_set_from_metadata, add_to_supported_assemblies
@@ -25,7 +24,7 @@ from eva_sub_cli_processing import sub_cli_utils
 from eva_submission import NEXTFLOW_DIR
 from eva_submission.eload_submission import Eload
 from eva_submission.eload_utils import provision_new_database_for_variant_warehouse, check_project_exists_in_evapro, \
-    get_nextflow_config_flag, get_nextflow_config
+    get_nextflow_config_flag, get_nextflow_config, get_species_name_for_assembly
 from eva_submission.evapro.populate_evapro import EvaProjectLoader
 from eva_submission.submission_config import EloadConfig
 from eva_submission.submission_qc_checks import EloadQC
@@ -159,7 +158,7 @@ class EloadIngestion(Eload):
                 assembly_accession,
                 vep_cache_assembly_name
             )
-            vep_species = get_species_name_from_ncbi(assembly_accession, api_key=cfg.get('eutils_api_key'))
+            vep_species = get_species_name_for_assembly(assembly_accession, ncbi_api_key=cfg.get('eutils_api_key'))
             self.eload_cfg.set(self.config_section, 'vep', assembly_accession, 'version', value=vep_version)
             self.eload_cfg.set(self.config_section, 'vep', assembly_accession, 'cache_version', value=vep_cache_version)
             self.eload_cfg.set(self.config_section, 'vep', assembly_accession, 'species', value=vep_species)

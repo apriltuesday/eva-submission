@@ -2,6 +2,7 @@ import glob
 import os
 import shutil
 import subprocess
+from contextlib import contextmanager
 from copy import deepcopy
 from unittest import TestCase, mock
 from unittest.mock import patch, MagicMock, PropertyMock
@@ -102,10 +103,15 @@ class TestEloadIngestion(TestCase):
     def _patch_metadata_handle(self):
         return patch('eva_submission.eload_submission.get_metadata_connection_handle', autospec=True)
 
+    @contextmanager
     def _patch_metadata_engine(self):
+        # Shared empty in-memory EVAPRO schema, used both by EvaProjectLoader (ORM session) and by the
+        # SQLAlchemy-based EVAPRO lookups in eload_utils.py.
         engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
         metadata.create_all(engine)
-        return patch.object(EvaProjectLoader, '_evapro_engine', side_effect=PropertyMock(return_value=engine))
+        with patch.object(EvaProjectLoader, '_evapro_engine', side_effect=PropertyMock(return_value=engine)), \
+                patch('eva_submission.eload_utils.get_evapro_engine', return_value=engine):
+            yield engine
 
     def _patch_mongo_database(self, collection_names=None):
         mongodb_instance = mock.Mock()
@@ -189,10 +195,9 @@ class TestEloadIngestion(TestCase):
                 patch.object(EvaProjectLoader, 'refresh_study_browser'), \
                 patch('eva_submission.eload_ingestion.get_all_results_for_query') as m_get_results, \
                 patch('eva_submission.eload_ingestion.command_utils.run_command_with_output', autospec=True), \
-                patch('eva_submission.eload_utils.get_metadata_connection_handle', autospec=True), \
                 patch('eva_submission.eload_submission.get_hold_date_from_ena') as m_get_hold_date, \
                 patch('eva_submission.eload_ingestion.get_vep_and_vep_cache_version') as m_get_vep_versions, \
-                patch('eva_submission.eload_ingestion.get_species_name_from_ncbi') as m_get_species, \
+                patch('eva_submission.eload_ingestion.get_species_name_for_assembly') as m_get_species, \
                 patch('eva_submission.eload_ingestion.get_assembly_name_and_taxonomy_id') as m_get_tax, \
                 patch('eva_submission.eload_ingestion.insert_new_assembly_and_taxonomy') as insert_asm_tax, \
                 patch.object(EvaProjectLoader, 'load_project_from_ena'), \
@@ -210,15 +215,14 @@ class TestEloadIngestion(TestCase):
                 self._patch_metadata_engine(), \
                 patch.object(EvaProjectLoader, 'refresh_study_browser'), \
                 patch('eva_submission.eload_ingestion.command_utils.run_command_with_output', autospec=True), \
-                patch('eva_submission.eload_utils.get_metadata_connection_handle', autospec=True), \
-                patch('eva_submission.eload_utils.get_all_results_for_query') as m_get_alias_results, \
+                patch('eva_submission.eload_utils.get_project_alias') as m_get_alias_results, \
                 patch('eva_submission.eload_utils.requests.post') as m_post, \
                 patch('eva_submission.eload_ingestion.insert_new_assembly_and_taxonomy') as insert_asm_tax, \
                 patch.object(EvaProjectLoader, 'load_project_from_ena'), \
                 patch.object(EvaProjectLoader, 'load_samples_from_vcf_file'), \
                 patch.object(EvaProjectLoader, 'update_project_samples_temp1'), \
                 self._patch_mongo_database():
-            m_get_alias_results.return_value = [['alias']]
+            m_get_alias_results.return_value = 'alias'
             m_post.return_value.text = self.get_mock_result_for_ena_date()
             self.eload.ingest(tasks=['metadata_load'])
 
@@ -228,14 +232,13 @@ class TestEloadIngestion(TestCase):
                 patch.object(EvaProjectLoader, 'refresh_study_browser'), \
                 patch('eva_submission.eload_ingestion.get_all_results_for_query') as m_get_results, \
                 patch('eva_submission.eload_ingestion.command_utils.run_command_with_output', autospec=True), \
-                patch('eva_submission.eload_utils.get_metadata_connection_handle', autospec=True), \
-                patch('eva_submission.eload_utils.get_all_results_for_query') as m_get_alias_results, \
+                patch('eva_submission.eload_utils.get_project_alias') as m_get_alias_results, \
                 patch('eva_submission.eload_ingestion.get_vep_and_vep_cache_version') as m_get_vep_versions, \
-                patch('eva_submission.eload_ingestion.get_species_name_from_ncbi') as m_get_species, \
+                patch('eva_submission.eload_ingestion.get_species_name_for_assembly') as m_get_species, \
                 patch('eva_submission.eload_ingestion.insert_new_assembly_and_taxonomy') as insert_asm_tax, \
                 patch('eva_submission.eload_utils.requests.post') as m_post, \
                 self._patch_mongo_database():
-            m_get_alias_results.return_value = [['alias']]
+            m_get_alias_results.return_value = 'alias'
             m_get_vep_versions.return_value = (100, 100)
             m_get_species.return_value = 'homo_sapiens'
             m_post.return_value.text = self.get_mock_result_for_ena_date()
@@ -253,14 +256,13 @@ class TestEloadIngestion(TestCase):
                 patch.object(EvaProjectLoader, 'refresh_study_browser'), \
                 patch('eva_submission.eload_ingestion.get_all_results_for_query') as m_get_results, \
                 patch('eva_submission.eload_ingestion.command_utils.run_command_with_output', autospec=True), \
-                patch('eva_submission.eload_utils.get_metadata_connection_handle', autospec=True), \
-                patch('eva_submission.eload_utils.get_all_results_for_query') as m_get_alias_results, \
+                patch('eva_submission.eload_utils.get_project_alias') as m_get_alias_results, \
                 patch('eva_submission.eload_ingestion.get_vep_and_vep_cache_version') as m_get_vep_versions, \
-                patch('eva_submission.eload_ingestion.get_species_name_from_ncbi') as m_get_species, \
+                patch('eva_submission.eload_ingestion.get_species_name_for_assembly') as m_get_species, \
                 patch('eva_submission.eload_utils.requests.post') as m_post, \
                 patch('eva_submission.eload_ingestion.insert_new_assembly_and_taxonomy') as insert_asm_tax, \
                 self._patch_mongo_database():
-            m_get_alias_results.return_value = [['alias']]
+            m_get_alias_results.return_value = 'alias'
             m_get_vep_versions.return_value = (100, 100)
             m_get_species.return_value = 'homo_sapiens'
             m_post.return_value.text = self.get_mock_result_for_ena_date()
@@ -295,20 +297,45 @@ class TestEloadIngestion(TestCase):
                 patch.object(EloadIngestion, '_update_metadata_post_ingestion') as m_post_load_metadata, \
                 patch('eva_submission.eload_ingestion.get_all_results_for_query') as m_get_results, \
                 patch('eva_submission.eload_ingestion.command_utils.run_command_with_output', autospec=True), \
-                patch('eva_submission.eload_utils.get_metadata_connection_handle', autospec=True), \
-                patch('eva_submission.eload_utils.get_all_results_for_query') as m_get_alias_results, \
+                patch('eva_submission.eload_utils.get_project_alias') as m_get_alias_results, \
                 patch('eva_submission.eload_ingestion.get_vep_and_vep_cache_version') as m_get_vep_versions, \
-                patch('eva_submission.eload_ingestion.get_species_name_from_ncbi') as m_get_species, \
+                patch('eva_submission.eload_ingestion.get_species_name_for_assembly') as m_get_species, \
                 patch('eva_submission.eload_utils.requests.post') as m_post, \
                 patch('eva_submission.eload_ingestion.insert_new_assembly_and_taxonomy') as insert_asm_tax, \
                 self._patch_mongo_database():
-            m_get_alias_results.return_value = [['alias']]
+            m_get_alias_results.return_value = 'alias'
             m_post.return_value.text = self.get_mock_result_for_ena_date()
             m_get_results.side_effect = default_db_results_for_accession()
             m_get_vep_versions.return_value = (100, 100)
             m_get_species.return_value = 'homo_sapiens'
             self.eload.ingest(tasks=['variant_load'])
             self.assert_vep_versions(100, 100, 'homo_sapiens')
+
+    def test_ingest_variant_load_vep_versions_found_from_evapro(self):
+        """If EVAPRO already has the taxonomy/scientific name for the assembly, NCBI should not be queried."""
+        with self._patch_metadata_handle(), \
+                patch.object(EloadIngestion, '_update_metadata_post_ingestion') as m_post_load_metadata, \
+                patch('eva_submission.eload_ingestion.get_all_results_for_query') as m_get_results, \
+                patch('eva_submission.eload_ingestion.command_utils.run_command_with_output', autospec=True), \
+                patch('eva_submission.eload_utils.get_project_alias') as m_get_alias_results, \
+                patch('eva_submission.eload_ingestion.get_vep_and_vep_cache_version') as m_get_vep_versions, \
+                patch('eva_submission.eload_utils.get_taxonomy_id_and_name_of_assembly_from_evapro') as m_get_evapro_tax, \
+                patch('eva_submission.eload_utils.get_scientific_name_from_evapro') as m_get_evapro_name, \
+                patch('eva_submission.eload_utils.get_ncbi_assembly_dicts_from_term') as m_get_ncbi_dicts, \
+                patch('eva_submission.eload_utils.retrieve_species_scientific_name_from_tax_id_ncbi') as m_get_ncbi_name, \
+                patch('eva_submission.eload_utils.requests.post') as m_post, \
+                patch('eva_submission.eload_ingestion.insert_new_assembly_and_taxonomy') as insert_asm_tax, \
+                self._patch_mongo_database():
+            m_get_alias_results.return_value = 'alias'
+            m_post.return_value.text = self.get_mock_result_for_ena_date()
+            m_get_results.side_effect = default_db_results_for_accession()
+            m_get_vep_versions.return_value = (100, 100)
+            m_get_evapro_tax.return_value = (9606, 'GRCh38')
+            m_get_evapro_name.return_value = 'Homo sapiens'
+            self.eload.ingest(tasks=['variant_load'])
+            self.assert_vep_versions(100, 100, 'homo_sapiens')
+            m_get_ncbi_dicts.assert_not_called()
+            m_get_ncbi_name.assert_not_called()
 
     def test_ingest_variant_load_vep_versions_not_found(self):
         """
@@ -319,14 +346,13 @@ class TestEloadIngestion(TestCase):
                 patch.object(EloadIngestion, '_update_metadata_post_ingestion') as m_post_load_metadata, \
                 patch('eva_submission.eload_ingestion.get_all_results_for_query') as m_get_results, \
                 patch('eva_submission.eload_ingestion.command_utils.run_command_with_output', autospec=True), \
-                patch('eva_submission.eload_utils.get_metadata_connection_handle', autospec=True), \
-                patch('eva_submission.eload_utils.get_all_results_for_query') as m_get_alias_results, \
+                patch('eva_submission.eload_utils.get_project_alias') as m_get_alias_results, \
                 patch('eva_submission.eload_ingestion.get_vep_and_vep_cache_version') as m_get_vep_versions, \
-                patch('eva_submission.eload_ingestion.get_species_name_from_ncbi') as m_get_species, \
+                patch('eva_submission.eload_ingestion.get_species_name_for_assembly') as m_get_species, \
                 patch('eva_submission.eload_utils.requests.post') as m_post, \
                 patch('eva_submission.eload_ingestion.insert_new_assembly_and_taxonomy') as insert_asm_tax, \
                 self._patch_mongo_database():
-            m_get_alias_results.return_value = [['alias']]
+            m_get_alias_results.return_value = 'alias'
             m_post.return_value.text = self.get_mock_result_for_ena_date()
             m_get_results.side_effect = default_db_results_for_accession_and_load()
             m_get_vep_versions.return_value = (None, None)
@@ -342,13 +368,12 @@ class TestEloadIngestion(TestCase):
                 patch.object(EloadIngestion, '_update_metadata_post_ingestion') as m_post_load_metadata, \
                 patch('eva_submission.eload_ingestion.get_all_results_for_query') as m_get_results, \
                 patch('eva_submission.eload_ingestion.command_utils.run_command_with_output', autospec=True), \
-                patch('eva_submission.eload_utils.get_metadata_connection_handle', autospec=True), \
-                patch('eva_submission.eload_utils.get_all_results_for_query') as m_get_alias_results, \
+                patch('eva_submission.eload_utils.get_project_alias') as m_get_alias_results, \
                 patch('eva_submission.eload_ingestion.get_vep_and_vep_cache_version') as m_get_vep_versions, \
                 patch('eva_submission.eload_utils.requests.post') as m_post, \
                 patch('eva_submission.eload_ingestion.insert_new_assembly_and_taxonomy') as insert_asm_tax, \
                 self._patch_mongo_database():
-            m_get_alias_results.return_value = [['alias']]
+            m_get_alias_results.return_value = 'alias'
             m_post.return_value.text = self.get_mock_result_for_ena_date()
             m_get_results.side_effect = default_db_results_for_accession_and_load()
             m_get_vep_versions.side_effect = ValueError()
@@ -425,18 +450,17 @@ class TestEloadIngestion(TestCase):
                 patch.object(EloadIngestion, '_update_metadata_post_ingestion') as m_post_load_metadata, \
                 patch('eva_submission.eload_ingestion.get_all_results_for_query') as m_get_results, \
                 patch('eva_submission.eload_ingestion.command_utils.run_command_with_output', autospec=True) as m_run_command, \
-                patch('eva_submission.eload_utils.get_metadata_connection_handle', autospec=True), \
-                patch('eva_submission.eload_utils.get_all_results_for_query') as m_get_alias_results, \
+                patch('eva_submission.eload_utils.get_project_alias') as m_get_alias_results, \
                 patch('eva_submission.eload_ingestion.get_vep_and_vep_cache_version') as m_get_vep_versions, \
                 patch('eva_submission.eload_utils.requests.post') as m_post, \
-                patch('eva_submission.eload_ingestion.get_species_name_from_ncbi') as m_get_species, \
+                patch('eva_submission.eload_ingestion.get_species_name_for_assembly') as m_get_species, \
                 patch('eva_submission.eload_ingestion.get_assembly_name_and_taxonomy_id') as m_get_tax, \
                 patch('eva_submission.eload_ingestion.insert_new_assembly_and_taxonomy') as insert_asm_tax, \
                 patch.object(EvaProjectLoader, 'load_project_from_ena'), \
                 patch.object(EvaProjectLoader, 'load_samples_from_vcf_file'), \
                 patch.object(EvaProjectLoader, 'update_project_samples_temp1'), \
                 self._patch_mongo_database():
-            m_get_alias_results.return_value = [['alias']]
+            m_get_alias_results.return_value = 'alias'
             m_get_vep_versions.return_value = (100, 100)
             m_get_species.return_value = 'homo_sapiens'
             m_post.return_value.text = self.get_mock_result_for_ena_date()
@@ -471,18 +495,17 @@ class TestEloadIngestion(TestCase):
                 patch.object(EloadIngestion, '_update_metadata_post_ingestion') as m_post_load_metadata, \
                 patch('eva_submission.eload_ingestion.get_all_results_for_query') as m_get_results, \
                 patch('eva_submission.eload_ingestion.command_utils.run_command_with_output', autospec=True) as m_run_command, \
-                patch('eva_submission.eload_utils.get_metadata_connection_handle', autospec=True), \
-                patch('eva_submission.eload_utils.get_all_results_for_query') as m_get_alias_results, \
+                patch('eva_submission.eload_utils.get_project_alias') as m_get_alias_results, \
                 patch('eva_submission.eload_ingestion.get_vep_and_vep_cache_version') as m_get_vep_versions, \
                 patch('eva_submission.eload_utils.requests.post') as m_post, \
-                patch('eva_submission.eload_ingestion.get_species_name_from_ncbi') as m_get_species, \
+                patch('eva_submission.eload_ingestion.get_species_name_for_assembly') as m_get_species, \
                 patch('eva_submission.eload_ingestion.get_assembly_name_and_taxonomy_id') as m_get_tax, \
                 patch('eva_submission.eload_ingestion.insert_new_assembly_and_taxonomy') as insert_asm_tax, \
                 patch.object(EvaProjectLoader, 'load_project_from_ena'), \
                 patch.object(EvaProjectLoader, 'load_samples_from_vcf_file'), \
                 patch.object(EvaProjectLoader, 'update_project_samples_temp1'), \
                 self._patch_mongo_database():
-            m_get_alias_results.return_value = [['alias']]
+            m_get_alias_results.return_value = 'alias'
             m_get_vep_versions.return_value = (100, 100)
             m_get_species.return_value = 'homo_sapiens'
             m_post.return_value.text = self.get_mock_result_for_ena_date()
@@ -510,14 +533,13 @@ class TestEloadIngestion(TestCase):
                 patch.object(EloadIngestion, '_update_metadata_post_ingestion') as m_post_load_metadata, \
                 patch('eva_submission.eload_ingestion.get_all_results_for_query') as m_get_results, \
                 patch('eva_submission.eload_ingestion.command_utils.run_command_with_output', autospec=True) as m_run_command, \
-                patch('eva_submission.eload_utils.get_metadata_connection_handle', autospec=True), \
-                patch('eva_submission.eload_utils.get_all_results_for_query') as m_get_alias_results, \
+                patch('eva_submission.eload_utils.get_project_alias') as m_get_alias_results, \
                 patch('eva_submission.eload_ingestion.get_vep_and_vep_cache_version') as m_get_vep_versions, \
-                patch('eva_submission.eload_ingestion.get_species_name_from_ncbi') as m_get_species, \
+                patch('eva_submission.eload_ingestion.get_species_name_for_assembly') as m_get_species, \
                 patch('eva_submission.eload_utils.requests.post') as m_post, \
                 patch('eva_submission.eload_ingestion.insert_new_assembly_and_taxonomy') as insert_asm_tax, \
                 self._patch_mongo_database():
-            m_get_alias_results.return_value = [['alias']]
+            m_get_alias_results.return_value = 'alias'
             m_get_vep_versions.return_value = (100, 100)
             m_get_species.return_value = 'homo_sapiens'
             m_post.return_value.text = self.get_mock_result_for_ena_date()

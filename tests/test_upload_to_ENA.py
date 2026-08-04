@@ -68,6 +68,10 @@ class TestENAUploader(TestCase):
         self.uploader_json = ENAUploader('ELOAD_1', metadata_json, self.brokering_folder)
         self.uploader_async_json = ENAUploaderAsync('ELOAD_1', metadata_json, self.brokering_folder)
 
+        evapro_patcher = patch('eva_submission.eload_utils.get_scientific_name_from_evapro', return_value=None)
+        evapro_patcher.start()
+        self.addCleanup(evapro_patcher.stop)
+
     def tearDown(self) -> None:
         for f in [self.uploader_xls.converter.single_submission_file,
                   self.uploader_async_xls.converter.single_submission_file,

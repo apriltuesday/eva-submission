@@ -7,12 +7,11 @@ from functools import cached_property
 from xml.etree.ElementTree import Element, ElementTree
 
 from ebi_eva_common_pyutils.logger import AppLogger
-from ebi_eva_common_pyutils.taxonomy.taxonomy import get_scientific_name_from_ensembl
 
 from eva_submission.ENA_submission.json_to_ENA_json import EnaJsonConverter
 from eva_submission.ENA_submission.xlsx_to_ENA_xml import add_element, add_links, add_attribute_elements, prettify
 from eva_submission.eload_utils import check_project_format, check_existing_project_in_ena, is_single_insdc_sequence, \
-    is_vcf_file
+    is_vcf_file, get_scientific_name
 
 
 def today():
@@ -78,7 +77,7 @@ class EnaJson2XmlConverter(EnaJsonConverter):
         sub_project_elemt = add_element(project_elemt, 'SUBMISSION_PROJECT')
         add_element(sub_project_elemt, 'SEQUENCING_PROJECT')
         tax_id = project_data.get("taxId", 0)
-        scientific_name = get_scientific_name_from_ensembl(str(tax_id).strip())
+        scientific_name = get_scientific_name(str(tax_id).strip())
 
         if tax_id:
             org_elemt = add_element(sub_project_elemt, 'ORGANISM')

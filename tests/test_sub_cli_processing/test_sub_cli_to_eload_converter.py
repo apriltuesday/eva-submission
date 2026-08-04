@@ -131,7 +131,8 @@ class TestSubCliToEloadConverter(TestCase):
         self.create_vcfs()
         metadata = self.create_metadata()
         self.cli_to_eload.eload_cfg.set('submission', 'metadata_spreadsheet', value=metadata)
-        self.cli_to_eload.detect_metadata_attributes()
+        with patch('eva_submission.eload_utils.get_scientific_name_from_evapro', return_value=None):
+            self.cli_to_eload.detect_metadata_attributes()
 
         assert self.cli_to_eload.eload_cfg.query('submission', 'project_title') == 'Greatest project ever'
         assert self.cli_to_eload.eload_cfg.query('submission', 'taxonomy_id') == 9606

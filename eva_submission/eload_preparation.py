@@ -6,7 +6,6 @@ import shutil
 import requests
 from ebi_eva_common_pyutils.config import cfg
 from ebi_eva_common_pyutils.ena_utils import download_xml_from_ena
-from ebi_eva_common_pyutils.taxonomy.taxonomy import get_scientific_name_from_ensembl
 from ebi_eva_internal_pyutils.config_utils import get_contig_alias_db_creds_for_profile
 from retry import retry
 
@@ -14,7 +13,7 @@ from eva_sub_cli_processing.sub_cli_utils import sub_ws_url_build, get_from_sub_
 from eva_submission.biosample_submission.biosamples_submitters import get_biosample_characteristics
 from eva_submission.eload_submission import Eload, directory_structure
 from eva_submission.eload_utils import resolve_accession_from_text, get_reference_fasta_and_report, NCBIAssembly, \
-    create_assembly_report_from_fasta, is_vcf_file, convert_spreadsheet_to_json
+    create_assembly_report_from_fasta, is_vcf_file, convert_spreadsheet_to_json, get_scientific_name
 from eva_submission.submission_in_ftp import FtpDepositBox
 from eva_submission.xlsx.xlsx_parser_eva import EvaXlsxReader, EvaXlsxWriter
 
@@ -201,7 +200,7 @@ class EloadPreparation(Eload):
         taxonomy_id = eva_metadata.project.get('Tax ID')
         if taxonomy_id and (isinstance(taxonomy_id, int) or taxonomy_id.isdigit()):
             self.eload_cfg.set('submission', 'taxonomy_id', value=int(taxonomy_id))
-            scientific_name = get_scientific_name_from_ensembl(taxonomy_id)
+            scientific_name = get_scientific_name(taxonomy_id)
             self.eload_cfg.set('submission', 'scientific_name', value=scientific_name)
         else:
             if taxonomy_id:
@@ -244,7 +243,7 @@ class EloadPreparation(Eload):
         taxonomy_id = self.find_taxonomy(json_data)
         if taxonomy_id and (isinstance(taxonomy_id, int) or taxonomy_id.isdigit()):
             self.eload_cfg.set('submission', 'taxonomy_id', value=int(taxonomy_id))
-            scientific_name = get_scientific_name_from_ensembl(taxonomy_id)
+            scientific_name = get_scientific_name(taxonomy_id)
             self.eload_cfg.set('submission', 'scientific_name', value=scientific_name)
         else:
             raise ValueError(f'Taxonomy id {taxonomy_id} is missing from the submission/preexisting project or is invalid')

@@ -157,7 +157,7 @@ class TestEnaXlsConverter(TestCase):
 </PROJECT_SET>
 '''
         self.converter.reader = Mock(project=self.project_row)
-        with patch('eva_submission.ENA_submission.xlsx_to_ENA_xml.get_scientific_name_from_ensembl') as m_sci_name:
+        with patch('eva_submission.ENA_submission.xlsx_to_ENA_xml.get_scientific_name') as m_sci_name:
             m_sci_name.return_value = 'Oncorhynchus mykiss'
             root = self.converter._create_project_xml()
             expected_root = ET.fromstring(expected_project)
@@ -178,7 +178,7 @@ class TestEnaXlsConverter(TestCase):
         ))
 
     def test_process_metadata_spreadsheet(self):
-        with patch('eva_submission.ENA_submission.xlsx_to_ENA_xml.get_scientific_name_from_ensembl') as m_sci_name:
+        with patch('eva_submission.ENA_submission.xlsx_to_ENA_xml.get_scientific_name') as m_sci_name:
             m_sci_name.return_value = 'Oncorhynchus mykiss'
         assert os.path.isfile(os.path.join(self.brokering_folder, 'TEST1.SingleSubmission.xml'))
 
@@ -239,7 +239,8 @@ class TestEnaXlsConverter(TestCase):
         assert elements_equal(root, expected_root)
 
     def test_create_single_submission_file(self):
-        submission_file = self.converter.create_single_submission_file()
+        with patch('eva_submission.eload_utils.get_scientific_name_from_evapro', return_value=None):
+            submission_file = self.converter.create_single_submission_file()
         assert os.path.exists(submission_file)
 
     def test_create_submission_files_for_existing_project(self):

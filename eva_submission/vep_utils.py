@@ -11,13 +11,13 @@ from fnmatch import fnmatch
 import pymongo
 import requests
 from ebi_eva_common_pyutils import command_utils
-from ebi_eva_common_pyutils.ncbi_utils import get_ncbi_assembly_dicts_from_term, \
-    retrieve_species_scientific_name_from_tax_id_ncbi
 from requests import HTTPError
 from retry import retry
 
 from ebi_eva_common_pyutils.config import cfg
 from ebi_eva_common_pyutils.logger import logging_config as log_cfg
+
+from eva_submission.eload_utils import get_scientific_name_from_taxonomy_id, get_taxonomy_id_and_name_of_assembly
 
 annotation_metadata_collection_name = 'annotationMetadata_2_0'
 annotation_collection_name = 'annotations_2_0'
@@ -150,19 +150,8 @@ def get_species_and_assembly(assembly_acc):
     Ensembl does support.
     Returns None if the taxonomy is not known.
     """
-    # We first need to search for the species associated with the assembly
-    assembly_dicts = get_ncbi_assembly_dicts_from_term(assembly_acc, api_key=cfg.get('eutils_api_key'))
-    taxid_and_assembly_name = set([
-        (assembly_dict.get('taxid'), assembly_dict.get('assemblyname'))
-        for assembly_dict in assembly_dicts
-        if assembly_dict.get('assemblyaccession') == assembly_acc or
-           assembly_dict.get('synonym', {}).get('genbank') == assembly_acc
-    ])
-    # This is a search so could retrieve multiple results
-    if len(taxid_and_assembly_name) != 1:
-        logger.warning(f'Multiple assembly found for {assembly_acc}')
-        raise ValueError(f'Cannot resolve single assembly for assembly {assembly_acc} in NCBI.')
-    taxonomy_id, assembly_name = taxid_and_assembly_name.pop()
+    # We first need to search for the species associated with the assembly, checking EVAPRO before NCBI
+    taxonomy_id, assembly_name = get_taxonomy_id_and_name_of_assembly(assembly_acc, ncbi_api_key=cfg.get('eutils_api_key'))
 
     # Now resolve the currently supported assembly for this species in Ensembl
     try:
@@ -240,7 +229,7 @@ def search_releases(ftp, all_releases, species, assembly, taxonomy_id):
 
 
 def vep_cache_version_downloaded(taxonomy_id, release, assembly):
-    scientific_name = retrieve_species_scientific_name_from_tax_id_ncbi(taxonomy_id, api_key=cfg.get('eutils_api_key'))
+    scientific_name = get_scientific_name_from_taxonomy_id(taxonomy_id, ncbi_api_key=cfg.get('eutils_api_key'))
     species_name = scientific_name.replace(' ', '_').lower()
     if os.path.exists(os.path.join(cfg['vep_cache_path'], species_name, f'{release}_{assembly}')):
         return True
@@ -278,7 +267,7 @@ def recursive_nlst(ftp, root, pattern):
 
 @retry(tries=4, delay=2, backoff=1.2, jitter=(1, 3), logger=logger)
 def download_and_extract_vep_cache(ftp, vep_cache_file, taxonomy_id):
-    scientific_name = retrieve_species_scientific_name_from_tax_id_ncbi(taxonomy_id, api_key=cfg.get('eutils_api_key'))
+    scientific_name = get_scientific_name_from_taxonomy_id(taxonomy_id, ncbi_api_key=cfg.get('eutils_api_key'))
     species_name = scientific_name.replace(' ', '_').lower()
 
     tmp_dir = tempfile.TemporaryDirectory()

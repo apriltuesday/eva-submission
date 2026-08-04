@@ -92,7 +92,7 @@ class TestEVAJsonToENAJsonConverter(TestCase):
             ]
         }
 
-        with patch('eva_submission.ENA_submission.json_to_ENA_json.get_scientific_name_from_ensembl') as m_sci_name:
+        with patch('eva_submission.ENA_submission.json_to_ENA_json.get_scientific_name') as m_sci_name:
             m_sci_name.return_value = 'Oncorhynchus mykiss'
             ena_project_json_obj = self.converter._create_ena_project_json_obj(self.project)
             self.assert_json_equal(expected_project_json_obj, ena_project_json_obj)
@@ -180,7 +180,8 @@ class TestEVAJsonToENAJsonConverter(TestCase):
         self.assert_json_equal(expected_submission_json_obj, ena_submission_json_obj)
 
     def test_create_ena_json_file(self):
-        output_ena_json = self.converter.create_single_submission_file()
+        with patch('eva_submission.eload_utils.get_scientific_name_from_evapro', return_value=None):
+            output_ena_json = self.converter.create_single_submission_file()
         assert os.path.exists(output_ena_json)
 
     def test_create_submission_json_obj_for_existing_project(self):

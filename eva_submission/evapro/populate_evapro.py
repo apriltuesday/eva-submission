@@ -2,20 +2,18 @@ import datetime
 import os
 import re
 from functools import cached_property
-from urllib.parse import urlsplit
 
 from ebi_eva_common_pyutils.assembly_utils import is_patch_assembly
 from ebi_eva_common_pyutils.config import cfg
 from ebi_eva_common_pyutils.ena_utils import get_scientific_name_and_common_name
 from ebi_eva_common_pyutils.logger import AppLogger
 from ebi_eva_common_pyutils.ncbi_utils import get_ncbi_assembly_name_from_term
-from ebi_eva_internal_pyutils.config_utils import get_metadata_creds_for_profile
 from ebi_eva_internal_pyutils.metadata_utils import build_taxonomy_code
-from sqlalchemy import select, create_engine, func, update
-from sqlalchemy.engine import URL
+from sqlalchemy import select, func, update
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
 
+from eva_submission.evapro.connection import get_evapro_engine
 from eva_submission.evapro.eload_metadata_loader import EloadMetadataJsonLoader
 from eva_submission.evapro.find_from_ena import OracleEnaProjectFinder
 from eva_submission.evapro.table import Project, Taxonomy, LinkedProject, Submission, ProjectEnaSubmission, \
@@ -425,18 +423,7 @@ class EvaProjectLoader(AppLogger):
         self.eva_session.commit()
 
     def _evapro_engine(self):
-        pg_url, pg_user, pg_pass = get_metadata_creds_for_profile(cfg['maven']['environment'],
-                                                                  cfg['maven']['settings_file'])
-        dbtype, host_url, port_and_db = urlsplit(pg_url).path.split(':')
-        port, db = port_and_db.split('/')
-        return create_engine(URL.create(
-            'postgresql+psycopg2',
-            username=pg_user,
-            password=pg_pass,
-            host=host_url.split('/')[-1],
-            database=db,
-            port=int(port)
-        ))
+        return get_evapro_engine()
 
     @cached_property
     def eva_session(self):
@@ -446,6 +433,18 @@ class EvaProjectLoader(AppLogger):
     def begin_or_continue_transaction(self):
         if not self.eva_session.is_active:
             self.eva_session.begin()
+
+    def get_assembly_name_from_evapro(self, assembly):
+        query = select(AssemblySet.assembly_name) \
+            .join(AccessionedAssembly, AssemblySet.assembly_set_id == AccessionedAssembly.assembly_set_id) \
+            .where(AccessionedAssembly.assembly_accession == assembly)
+        rows = set(self.eva_session.execute(query).fetchall())
+        if len(rows) == 0:
+            return None
+        elif len(rows) > 1:
+            options = ', '.join([row for row, in rows])
+            raise ValueError(f'More than one possible name for assembly {assembly} found: {options}')
+        return rows.pop()[0]
 
     def get_assembly_code_from_evapro(self, assembly):
         query = select(AssemblySet.assembly_code) \
@@ -457,7 +456,7 @@ class EvaProjectLoader(AppLogger):
         elif len(rows) > 1:
             options = ', '.join([row for row, in rows])
             raise ValueError(f'More than one possible code for assembly {assembly} found: {options}')
-        return rows[0][0]
+        return rows.pop()[0]
 
     def get_assembly_code(self, assembly, ncbi_api_key=None):
         # TODO: deduplicate the code taken from ebi_eva_internal_pyutils.metadata_utils.py
@@ -627,6 +626,8 @@ class EvaProjectLoader(AppLogger):
         return analysis_obj
 
     def insert_assembly_set(self, taxonomy_obj, assembly_accession, assembly_name=None):
+        if not assembly_name:
+            assembly_name = self.get_assembly_name_from_evapro(assembly=assembly_accession)
         if not assembly_name:
             assembly_name = get_ncbi_assembly_name_from_term(assembly_accession, api_key=cfg.get('eutils_api_key'))
 

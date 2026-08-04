@@ -13,15 +13,21 @@ from ebi_eva_common_pyutils.assembly_utils import retrieve_genbank_assembly_acce
 from ebi_eva_common_pyutils.config import cfg
 from ebi_eva_common_pyutils.ena_utils import download_xml_from_ena
 from ebi_eva_common_pyutils.logger import logging_config as log_cfg
+from ebi_eva_common_pyutils.ncbi_utils import get_ncbi_assembly_dicts_from_term, \
+    retrieve_species_scientific_name_from_tax_id_ncbi
 from ebi_eva_common_pyutils.reference import NCBIAssembly, NCBISequence
 from ebi_eva_common_pyutils.spreadsheet.metadata_xlsx_utils import metadata_xlsx_version
-from ebi_eva_internal_pyutils.metadata_utils import get_metadata_connection_handle
+from ebi_eva_common_pyutils.taxonomy.taxonomy import get_scientific_name_from_ensembl
 from ebi_eva_internal_pyutils.mongodb import MongoDatabase
-from ebi_eva_internal_pyutils.pg_utils import get_all_results_for_query
 from eva_sub_cli.executables.xlsx2json import XlsxParser
 from packaging.version import Version
 from requests.auth import HTTPBasicAuth
 from retry import retry
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from eva_submission.evapro.connection import get_evapro_engine
+from eva_submission.evapro.table import Project, Taxonomy, AssemblySet, AccessionedAssembly
 
 logger = log_cfg.get_logger(__name__)
 
@@ -58,8 +64,10 @@ def resolve_accession_from_text(reference_text):
     # first Check if it is an reference genome
     if NCBIAssembly.is_assembly_accession_format(reference_text):
         return [reference_text]
-    # Search for a reference genome that resolve this text
-    accession = retrieve_genbank_assembly_accessions_from_ncbi(reference_text, api_key=cfg.get('eutils_api_key'))
+    # Search EVAPRO first for a reference genome matching this text exactly, then fall back to NCBI
+    accession = get_assembly_accession_from_evapro(reference_text)
+    if not accession:
+        accession = retrieve_genbank_assembly_accessions_from_ncbi(reference_text, api_key=cfg.get('eutils_api_key'))
     if accession:
         return accession
 
@@ -105,21 +113,92 @@ def cast_list(l, type_to_cast=str):
 
 
 def get_project_alias(project_accession):
-    with get_metadata_connection_handle(cfg['maven']['environment'], cfg['maven']['settings_file']) as conn:
-        query = f"select alias from evapro.project where project_accession='{project_accession}';"
-        rows = get_all_results_for_query(conn, query)
+    with Session(get_evapro_engine()) as session:
+        query = select(Project.alias).where(Project.project_accession == project_accession)
+        rows = session.execute(query).fetchall()
     if len(rows) != 1:
         raise ValueError(f'No project alias for {project_accession} found in metadata DB.')
     return rows[0][0]
 
 
 def check_project_exists_in_evapro(project_accession):
-    with get_metadata_connection_handle(cfg['maven']['environment'], cfg['maven']['settings_file']) as conn:
-        query = f"select alias from evapro.project where project_accession='{project_accession}';"
-        rows = get_all_results_for_query(conn, query)
-    if len(rows) == 1:
-        return True
-    return False
+    with Session(get_evapro_engine()) as session:
+        query = select(Project.alias).where(Project.project_accession == project_accession)
+        rows = session.execute(query).fetchall()
+    return len(rows) == 1
+
+
+def get_scientific_name_from_evapro(taxonomy_id):
+    """Return the scientific name for a taxonomy id already known to EVAPRO, or None if not found."""
+    with Session(get_evapro_engine()) as session:
+        query = select(Taxonomy.scientific_name).where(Taxonomy.taxonomy_id == taxonomy_id)
+        rows = session.execute(query).fetchall()
+    return rows[0][0] if len(rows) == 1 else None
+
+
+def get_taxonomy_id_and_name_of_assembly_from_evapro(assembly_accession):
+    """Return (taxonomy_id, assembly_name) for an assembly accession already known to EVAPRO, or (None, None)."""
+    with Session(get_evapro_engine()) as session:
+        query = select(AssemblySet.taxonomy_id, AssemblySet.assembly_name) \
+            .join(AccessionedAssembly, AssemblySet.assembly_set_id == AccessionedAssembly.assembly_set_id) \
+            .where(AccessionedAssembly.assembly_accession == assembly_accession)
+        rows = session.execute(query).fetchall()
+    return tuple(rows[0]) if len(rows) == 1 else (None, None)
+
+
+def get_assembly_accession_from_evapro(assembly_name):
+    """Return the assembly accession(s) for an assembly name already known to EVAPRO, as a list (possibly empty)."""
+    with Session(get_evapro_engine()) as session:
+        query = select(AccessionedAssembly.assembly_accession) \
+            .join(AssemblySet, AssemblySet.assembly_set_id == AccessionedAssembly.assembly_set_id) \
+            .where(AssemblySet.assembly_name == assembly_name)
+        rows = session.execute(query).fetchall()
+    return [row[0] for row in rows]
+
+
+def get_taxonomy_id_and_name_of_assembly(assembly_accession, ncbi_api_key=None):
+    """
+    Resolve the taxonomy id and assembly name for an assembly accession, checking EVAPRO first and falling
+    back to NCBI. Raises ValueError if NCBI cannot resolve a single unambiguous result.
+    """
+    taxonomy_id, assembly_name = get_taxonomy_id_and_name_of_assembly_from_evapro(assembly_accession)
+    if taxonomy_id and assembly_name:
+        return taxonomy_id, assembly_name
+    assembly_dicts = get_ncbi_assembly_dicts_from_term(assembly_accession, api_key=ncbi_api_key)
+    taxid_and_assembly_name = set([
+        (assembly_dict.get('taxid'), assembly_dict.get('assemblyname'))
+        for assembly_dict in assembly_dicts
+        if assembly_dict.get('assemblyaccession') == assembly_accession or
+           assembly_dict.get('synonym', {}).get('genbank') == assembly_accession
+    ])
+    if len(taxid_and_assembly_name) != 1:
+        logger.warning(f'Multiple assembly found for {assembly_accession}')
+        raise ValueError(f'Cannot resolve single assembly for assembly {assembly_accession} in NCBI.')
+    return taxid_and_assembly_name.pop()
+
+
+def get_scientific_name(taxonomy_id, ncbi_api_key=None):
+    """Resolve the scientific name for a taxonomy id, checking EVAPRO, then Ensembl, then NCBI."""
+    scientific_name = get_scientific_name_from_evapro(taxonomy_id)
+    if not scientific_name:
+        try:
+            scientific_name = get_scientific_name_from_ensembl(taxonomy_id)
+        except Exception:
+            logger.warning(f'Failed to retrieve scientific name from Ensembl for taxonomy id {taxonomy_id}')
+            scientific_name = None
+    if not scientific_name:
+        scientific_name = retrieve_species_scientific_name_from_tax_id_ncbi(taxonomy_id, api_key=ncbi_api_key)
+    return scientific_name
+
+
+def get_species_name_for_assembly(assembly_accession, ncbi_api_key=None):
+    """
+    Resolve the lowercase, underscore-separated species name for an assembly accession, checking EVAPRO
+    first (for both the taxonomy id and the scientific name) and falling back to Ensembl then NCBI.
+    """
+    taxonomy_id, _ = get_taxonomy_id_and_name_of_assembly(assembly_accession, ncbi_api_key=ncbi_api_key)
+    scientific_name = get_scientific_name(taxonomy_id, ncbi_api_key=ncbi_api_key)
+    return scientific_name.replace(' ', '_').lower()
 
 
 def get_hold_date_from_ena(project_accession, project_alias=None):

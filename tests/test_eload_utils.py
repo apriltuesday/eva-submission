@@ -5,10 +5,19 @@ from unittest import TestCase
 from unittest.mock import patch, Mock
 
 from lxml import etree
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
 
 from eva_submission.eload_utils import check_existing_project_in_ena, detect_vcf_aggregation, \
     check_project_exists_in_evapro, create_assembly_report_from_fasta, get_hold_date_from_ena
+from eva_submission.evapro.table import metadata, Project
 from eva_submission.submission_config import load_config
+
+
+def _evapro_sqlite_engine():
+    engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+    metadata.create_all(engine)
+    return engine
 
 
 class TestEloadUtils(TestCase):
@@ -30,12 +39,13 @@ class TestEloadUtils(TestCase):
                 os.remove(f)
 
     def test_check_project_exists_in_evapro(self):
-        with patch('eva_submission.eload_utils.get_metadata_connection_handle'), \
-                patch('eva_submission.eload_utils.get_all_results_for_query', return_value=[('something')]):
+        engine = _evapro_sqlite_engine()
+        with Session(engine) as session:
+            session.add(Project(project_accession='existing project', alias='alias1', center_name='c', scope='s',
+                                material='m'))
+            session.commit()
+        with patch('eva_submission.eload_utils.get_evapro_engine', return_value=engine):
             assert check_project_exists_in_evapro('existing project')
-
-        with patch('eva_submission.eload_utils.get_metadata_connection_handle'), \
-                patch('eva_submission.eload_utils.get_all_results_for_query', return_value=[]):
             assert not check_project_exists_in_evapro('non existing project')
 
     def test_check_existing_project_in_ena(self):
