@@ -17,7 +17,7 @@ from retry import retry
 from ebi_eva_common_pyutils.config import cfg
 from ebi_eva_common_pyutils.logger import logging_config as log_cfg
 
-from eva_submission.eload_utils import get_scientific_name_from_taxonomy_id, get_taxonomy_id_and_name_of_assembly
+from eva_submission.eload_utils import get_scientific_name, get_taxonomy_id_and_name_of_assembly
 
 annotation_metadata_collection_name = 'annotationMetadata_2_0'
 annotation_collection_name = 'annotations_2_0'
@@ -229,7 +229,7 @@ def search_releases(ftp, all_releases, species, assembly, taxonomy_id):
 
 
 def vep_cache_version_downloaded(taxonomy_id, release, assembly):
-    scientific_name = get_scientific_name_from_taxonomy_id(taxonomy_id, ncbi_api_key=cfg.get('eutils_api_key'))
+    scientific_name = get_scientific_name(taxonomy_id, ncbi_api_key=cfg.get('eutils_api_key'))
     species_name = scientific_name.replace(' ', '_').lower()
     if os.path.exists(os.path.join(cfg['vep_cache_path'], species_name, f'{release}_{assembly}')):
         return True
@@ -267,7 +267,7 @@ def recursive_nlst(ftp, root, pattern):
 
 @retry(tries=4, delay=2, backoff=1.2, jitter=(1, 3), logger=logger)
 def download_and_extract_vep_cache(ftp, vep_cache_file, taxonomy_id):
-    scientific_name = get_scientific_name_from_taxonomy_id(taxonomy_id, ncbi_api_key=cfg.get('eutils_api_key'))
+    scientific_name = get_scientific_name(taxonomy_id, ncbi_api_key=cfg.get('eutils_api_key'))
     species_name = scientific_name.replace(' ', '_').lower()
 
     tmp_dir = tempfile.TemporaryDirectory()
