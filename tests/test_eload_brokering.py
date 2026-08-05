@@ -133,7 +133,8 @@ class TestEloadBrokering(TestCase):
         self.eload.eload_cfg.set('brokering', 'analyses', value={'AA1':{'vcf_files':{}}})
         response = Mock(text=self.ena_receipt_xml, headers={'Content-Type': 'application/xml'})
         with patch.object(ENAUploader, 'upload_vcf_files_to_ena_ftp'),\
-              patch.object(ENAUploader, '_post_metadata_file_to_ena', return_value=response):
+              patch.object(ENAUploader, '_post_metadata_file_to_ena', return_value=response),\
+              patch('eva_submission.eload_utils.get_scientific_name_from_evapro', return_value=None):
             self.eload.broker_to_ena()
 
     def test_broker_to_ena_json(self):
@@ -145,7 +146,8 @@ class TestEloadBrokering(TestCase):
         poll_response = Mock(text=self.ena_receipt_json, headers={'Content-Type': 'application/json'})
         with patch.object(ENAUploader, 'upload_vcf_files_to_ena_ftp'),\
               patch.object(ENAUploader, '_post_metadata_file_to_ena', return_value=upload_response),\
-              patch('eva_submission.ENA_submission.upload_to_ENA.requests.get', return_value=poll_response):
+              patch('eva_submission.ENA_submission.upload_to_ENA.requests.get', return_value=poll_response),\
+              patch('eva_submission.eload_utils.get_scientific_name_from_evapro', return_value=None):
             self.eload.broker_to_ena(async_upload=True)
 
     def test_broker_to_ena_json_existing_project(self):

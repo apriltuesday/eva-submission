@@ -67,10 +67,9 @@ class TestEloadBacklog(TestCase):
         with patch('eva_submission.eload_submission.get_metadata_connection_handle', autospec=True), \
                 patch('eva_submission.eload_backlog.get_all_results_for_query') as m_get_results, \
                 patch('eva_submission.eload_backlog.get_reference_fasta_and_report') as m_get_genome, \
-                patch('eva_submission.eload_utils.get_metadata_connection_handle', autospec=True), \
-                patch('eva_submission.eload_utils.get_all_results_for_query') as m_get_alias_results, \
+                patch('eva_submission.eload_backlog.get_project_alias') as m_get_alias_results, \
                 patch('eva_submission.eload_utils.requests.post') as m_post:
-            m_get_alias_results.return_value = [['alias']]
+            m_get_alias_results.return_value = 'alias'
             m_get_results.side_effect = [
                 [['PRJEB12345']],
                 [['ERZ999999']],

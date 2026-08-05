@@ -63,14 +63,22 @@ drwxrwxr-x    2 ftp      ftp        102400 Apr 13 13:59 2_collection
         )
 
     def test_get_vep_versions_from_ensembl(self):
-        vep_version, cache_version = get_vep_and_vep_cache_version_from_ensembl('GCA_000827895.1')
+        with patch('eva_submission.eload_utils.get_taxonomy_id_and_name_of_assembly_from_evapro') as m_get_evapro_asm, \
+                patch('eva_submission.eload_utils.get_scientific_name_from_evapro') as m_get_evapro_name:
+            m_get_evapro_asm.return_value = (None, None)
+            m_get_evapro_name.return_value = None
+            vep_version, cache_version = get_vep_and_vep_cache_version_from_ensembl('GCA_000827895.1')
         self.assertEqual(vep_version, 116)
         self.assertEqual(cache_version, 63)
         assert os.path.exists(os.path.join(cfg['vep_cache_path'], 'thelohanellus_kitauei'))
         assert os.listdir(os.path.join(cfg['vep_cache_path'], 'thelohanellus_kitauei')) == ['63_ASM82789v1']
 
     def test_get_vep_versions_from_ensembl_not_found(self):
-        vep_version, cache_version = get_vep_and_vep_cache_version_from_ensembl('GCA_015220235.1')
+        with patch('eva_submission.eload_utils.get_taxonomy_id_and_name_of_assembly_from_evapro') as m_get_evapro_asm, \
+                patch('eva_submission.eload_utils.get_scientific_name_from_evapro') as m_get_evapro_name:
+            m_get_evapro_asm.return_value = (None, None)
+            m_get_evapro_name.return_value = None
+            vep_version, cache_version = get_vep_and_vep_cache_version_from_ensembl('GCA_015220235.1')
         self.assertEqual(vep_version, None)
         self.assertEqual(cache_version, None)
 
@@ -120,7 +128,11 @@ drwxrwxr-x    2 ftp      ftp        102400 Apr 13 13:59 2_collection
             assert os.path.exists(os.path.join(cfg['vep_path'], 'ensembl-vep-release-113'))
 
     def test_download_and_extract_vep_cache(self):
-        with patch('eva_submission.vep_utils.retrieve_species_scientific_name_from_tax_id_ncbi') as m_get_scf_name:
+        with patch('eva_submission.eload_utils.get_scientific_name_from_evapro') as m_get_evapro_name, \
+                patch('eva_submission.eload_utils.get_scientific_name_from_ensembl') as m_get_ensembl_name, \
+                patch('eva_submission.eload_utils.retrieve_species_scientific_name_from_tax_id_ncbi') as m_get_scf_name:
+            m_get_evapro_name.return_value = None
+            m_get_ensembl_name.side_effect = Exception('not found in Ensembl')
             m_get_scf_name.return_value = 'whatever_species_name'
             with get_ftp_connection('ftp.ensembl.org') as ftp_conn:
                 download_and_extract_vep_cache(
@@ -128,6 +140,22 @@ drwxrwxr-x    2 ftp      ftp        102400 Apr 13 13:59 2_collection
                     '/pub/release-105/variation/indexed_vep_cache/papio_anubis_refseq_vep_105_Panubis1.0.tar.gz', 1001
                 )
                 assert os.path.exists(os.path.join(cfg['vep_cache_path'], 'whatever_species_name', '105_Panubis1.0'))
+                m_get_scf_name.assert_called_once()
+
+    def test_download_and_extract_vep_cache_from_evapro(self):
+        with patch('eva_submission.eload_utils.get_scientific_name_from_evapro') as m_get_evapro_name, \
+                patch('eva_submission.eload_utils.get_scientific_name_from_ensembl') as m_get_ensembl_name, \
+                patch('eva_submission.eload_utils.retrieve_species_scientific_name_from_tax_id_ncbi') as m_get_scf_name:
+            m_get_evapro_name.return_value = 'whatever_species_name'
+            with get_ftp_connection('ftp.ensembl.org') as ftp_conn:
+                download_and_extract_vep_cache(
+                    ftp_conn,
+                    '/pub/release-105/variation/indexed_vep_cache/papio_anubis_refseq_vep_105_Panubis1.0.tar.gz', 1001
+                )
+                assert os.path.exists(os.path.join(cfg['vep_cache_path'], 'whatever_species_name', '105_Panubis1.0'))
+                m_get_ensembl_name.assert_not_called()
+                m_get_scf_name.assert_not_called()
+                m_get_scf_name.assert_not_called()
 
     def test_get_species_and_assembly(self):
         assemblies2results = {
@@ -146,9 +174,23 @@ drwxrwxr-x    2 ftp      ftp        102400 Apr 13 13:59 2_collection
             'GCA_002742125.1': ('ovis_aries', 'Oar_rambouillet_v1.0', False, '9940'),
             'GCA_002863925.1': ('equus_caballus', 'EquCab3.0', True, '9796')
         }
-        for assembly in assemblies2results:
-            res = get_species_and_assembly(assembly)
-            assert res == assemblies2results.get(assembly)
+        with patch('eva_submission.eload_utils.get_taxonomy_id_and_name_of_assembly_from_evapro') as m_get_evapro_asm:
+            m_get_evapro_asm.return_value = (None, None)
+            for assembly in assemblies2results:
+                res = get_species_and_assembly(assembly)
+                assert res == assemblies2results.get(assembly)
+
+    def test_get_species_and_assembly_from_evapro(self):
+        with patch('eva_submission.eload_utils.get_taxonomy_id_and_name_of_assembly_from_evapro') as m_get_evapro_asm, \
+                patch('eva_submission.eload_utils.get_ncbi_assembly_dicts_from_term') as m_get_ncbi_dicts, \
+                patch('eva_submission.vep_utils.resolve_ensembl_supported_assemblies') as m_resolve_ensembl:
+            m_get_evapro_asm.return_value = (9606, 'GRCh37')
+            m_resolve_ensembl.return_value.json.return_value = [
+                {'assembly_accession': 'GCA_000001405.1', 'name': 'homo_sapiens', 'strain': 'reference (CHM13)'}
+            ]
+            res = get_species_and_assembly('GCA_000001405.1')
+            assert res == ('homo_sapiens', 'GRCh37', True, 9606)
+            m_get_ncbi_dicts.assert_not_called()
 
     def test_get_releases(self):
         with get_ftp_connection(ensembl_ftp_url) as ftp:

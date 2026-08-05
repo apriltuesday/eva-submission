@@ -151,7 +151,7 @@ class TestEVAJsonToENAXmlConverter(TestCase):
 	</PROJECT>
 </PROJECT_SET>"""
 
-        with patch('eva_submission.ENA_submission.json_to_ENA_xml.get_scientific_name_from_ensembl') as m_sci_name:
+        with patch('eva_submission.ENA_submission.json_to_ENA_xml.get_scientific_name') as m_sci_name:
             m_sci_name.return_value = 'Oncorhynchus mykiss'
             self.converter.eva_json_data['project'] = self.project
             root = self.converter._create_project_xml()

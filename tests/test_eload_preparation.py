@@ -91,7 +91,8 @@ class TestEloadPreparation(TestCase):
         self.eload.eload_cfg.set('submission', 'metadata_spreadsheet', value=metadata)
         self.eload.convert_new_spreadsheet_to_json()
 
-        self.eload.detect_metadata_attributes()
+        with patch('eva_submission.eload_utils.get_scientific_name_from_evapro', return_value=None):
+            self.eload.detect_metadata_attributes()
         self.eload.check_submitted_filenames()
         # Check that the metadata json is in the config file
         metadata_json = metadata.replace('metadata.xlsx', 'eva_sub_cli_metadata.json')
@@ -101,7 +102,8 @@ class TestEloadPreparation(TestCase):
         self.create_vcfs()
         metadata = self.create_metadata()
         self.eload.eload_cfg.set('submission', 'metadata_spreadsheet', value=metadata)
-        self.eload.detect_metadata_attributes()
+        with patch('eva_submission.eload_utils.get_scientific_name_from_evapro', return_value=None):
+            self.eload.detect_metadata_attributes()
 
         assert self.eload.eload_cfg.query('submission', 'project_title') == 'Greatest project ever'
         assert self.eload.eload_cfg.query('submission', 'taxonomy_id') == 9606
@@ -116,7 +118,8 @@ class TestEloadPreparation(TestCase):
         metadata = self.create_metadata(v2=True)
         self.eload.eload_cfg.set('submission', 'metadata_spreadsheet', value=metadata)
         self.eload.convert_new_spreadsheet_to_json()
-        self.eload.detect_metadata_attributes_from_json()
+        with patch('eva_submission.eload_utils.get_scientific_name_from_evapro', return_value=None):
+            self.eload.detect_metadata_attributes_from_json()
 
         assert self.eload.eload_cfg.query('submission', 'project_title') == 'Greatest project ever'
         assert self.eload.eload_cfg.query('submission', 'taxonomy_id') == 9606

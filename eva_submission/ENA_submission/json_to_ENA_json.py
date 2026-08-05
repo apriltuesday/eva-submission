@@ -6,10 +6,9 @@ from datetime import datetime, timedelta
 from functools import cached_property
 
 from ebi_eva_common_pyutils.logger import AppLogger
-from ebi_eva_common_pyutils.taxonomy.taxonomy import get_scientific_name_from_ensembl
 
 from eva_submission.eload_utils import check_project_format, check_existing_project_in_ena, is_single_insdc_sequence, \
-    is_vcf_file
+    is_vcf_file, get_scientific_name
 
 
 def today():
@@ -119,7 +118,7 @@ class EnaJsonConverter(AppLogger):
         ]
 
         tax_id = project_data.get("taxId", 0)
-        scientific_name = get_scientific_name_from_ensembl(str(tax_id).strip())
+        scientific_name = get_scientific_name(str(tax_id).strip())
 
         related_projects = []
         for key, field_name in [

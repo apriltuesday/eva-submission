@@ -7,9 +7,9 @@ from xml.dom import minidom
 from xml.etree.ElementTree import Element, ElementTree
 
 from ebi_eva_common_pyutils.logger import AppLogger
-from ebi_eva_common_pyutils.taxonomy.taxonomy import get_scientific_name_from_ensembl
 
-from eva_submission.eload_utils import check_existing_project_in_ena, check_project_format, is_single_insdc_sequence
+from eva_submission.eload_utils import check_existing_project_in_ena, check_project_format, is_single_insdc_sequence, \
+    get_scientific_name
 from eva_submission.xlsx.xlsx_parser_eva import EvaXlsxReader
 
 
@@ -157,7 +157,7 @@ class EnaXlsxConverter(AppLogger):
         if 'Tax ID' in project_row:
             org_elemt = add_element(sub_project_elemt, 'ORGANISM')
             add_element(org_elemt, 'TAXON_ID', element_text=str(project_row.get('Tax ID')).strip())
-            scientific_name = get_scientific_name_from_ensembl(str(project_row.get('Tax ID')).strip())
+            scientific_name = get_scientific_name(str(project_row.get('Tax ID')).strip())
             add_element(org_elemt, 'SCIENTIFIC_NAME', element_text=scientific_name)
 
             add_element(org_elemt, 'STRAIN', element_text=project_row.get('Strain', ''), content_required=True)
