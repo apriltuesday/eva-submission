@@ -1,10 +1,10 @@
 Changelog for eva-submission
 ============================
 
-## 1.23.3 (unreleased)
+## 1.23.3 (2026-08-13)
 ----------------------
 
-- Nothing changed yet.
+- Refactor taxonomy utilities to always query EVAPRO before contacting NCBI/Ensembl APIs
 
 
 ## 1.23.2 (2026-08-03)
